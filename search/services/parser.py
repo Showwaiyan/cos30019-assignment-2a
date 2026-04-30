@@ -15,4 +15,22 @@ def load_map(filename: str) -> tuple[int, list[int], dict]:
     :return: (origin, destinations, graph)
              graph is dict of node_id -> Node
     """
-    pass
+    points = {}
+    startNode = 0
+    destinationNodes = []
+
+    with open(filename) as file:
+        startNode = int(file.readline())
+        destinationNodes = list(map(lambda x: int(x),file.readline().strip().split(";")))
+        for line in file:
+            if('(' in line):
+                part = line.strip().split(":")
+                coordinates = part[1].replace("(", "").replace(")", "").split(",")  
+                points[int(part[0])] = Node(int(part[0]), int(coordinates[0]), int(coordinates[1]), [])
+                continue
+            
+            a = list(map(lambda x: int(x), line.strip().split(",")))
+            points[a[0]].neighbors.append((a[1],a[2]))
+        
+    return [startNode,destinationNodes, points]
+
