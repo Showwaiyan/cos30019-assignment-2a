@@ -15,22 +15,27 @@ def load_map(filename: str) -> tuple[int, list[int], dict]:
     :return: (origin, destinations, graph)
              graph is dict of node_id -> Node
     """
-    points = {}
-    startNode = 0
-    destinationNodes = []
+    graph = {}
+    origin = 0
+    destinations = []
 
     with open(filename) as file:
-        startNode = int(file.readline())
-        destinationNodes = list(map(lambda x: int(x),file.readline().strip().split(";")))
+        origin = int(file.readline())
+
+        # e.g. "5;7" -> [5, 7]
+        destinations = list(map(lambda x: int(x),file.readline().strip().split(";")))
+
         for line in file:
             if('(' in line):
-                part = line.strip().split(":")
-                coordinates = part[1].replace("(", "").replace(")", "").split(",")  
-                points[int(part[0])] = Node(int(part[0]), int(coordinates[0]), int(coordinates[1]), [])
+                # Node line format: "1:(1,4)" -> id=1, x=1, y=4
+                node_id, coordinates = line.strip().split(":")
+                x, y = coordinates.replace("(", "").replace(")", "").split(",")  
+                graph[int(node_id)] = Node(int(node_id), int(x), int(y), [])
                 continue
             
-            a = list(map(lambda x: int(x), line.strip().split(",")))
-            points[a[0]].neighbors.append((a[1],a[2]))
+            # Edge line format: "1,2,5" -> from=1, to=2, cost=5
+            from_id, to_id, cost = list(map(lambda x: int(x), line.strip().split(",")))
+            graph[from_id].neighbors.append((to_id,cost))
         
-    return [startNode,destinationNodes, points]
+    return (origin,destinations, graph)
 
