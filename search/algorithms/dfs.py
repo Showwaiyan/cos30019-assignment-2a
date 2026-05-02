@@ -9,6 +9,13 @@ class DFS(GraphSearch):
         self._graph = graph
 
     def search(self, origin: int, destinations: list[int]) -> list[Node]:
+        for dest in destinations:
+            if dest not in self._graph:
+                raise ValueError(f"Destination {dest} not found in graph")
+        
+        if origin not in self._graph:
+            raise ValueError(f"Origin {origin} not found in graph")
+
         visited = set()
         stack = [(origin, [origin])]
 
