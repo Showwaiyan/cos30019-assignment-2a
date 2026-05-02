@@ -70,7 +70,7 @@ class TestDFS:
 
     def test_with_obstacles(self):
         restricted_map = map_0.copy()
-        restricted_map[1] = Node(1, 0.0, 0.0, [(2, 1.0)])
+        restricted_map[1] = Node(1, 0, 0, [(2, 1)])
 
         dfs = DFS(restricted_map)
         result = dfs.search(origin=1, destinations=[8])
