@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class TreeSearch(ABC):
+class GraphSearch(ABC):
     """
     Abstract base class for all tree-based search algorithms.
     Each algorithm subclass must implement the search() method.

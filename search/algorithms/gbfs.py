@@ -1,8 +1,8 @@
 import heapq
-from search.base import TreeSearch
+from search.base import GraphSearch
 
 
-class GBFS(TreeSearch):
+class GBFS(GraphSearch):
     """Greedy Best-First Search — uses only the heuristic cost to goal."""
 
     def __init__(self, graph: dict):

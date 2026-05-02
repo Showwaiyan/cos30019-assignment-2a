@@ -1,7 +1,7 @@
-from search.base import TreeSearch
+from search.base import GraphSearch
 
 
-class DFS(TreeSearch):
+class DFS(GraphSearch):
     """Depth-First Search — selects one option, tries it, backtracks when exhausted."""
 
     def __init__(self, graph: dict):

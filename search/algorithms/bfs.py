@@ -1,8 +1,8 @@
 from collections import deque
-from search.base import TreeSearch
+from search.base import GraphSearch
 
 
-class BFS(TreeSearch):
+class BFS(GraphSearch):
     """Breadth-First Search — expands all nodes one level at a time."""
 
     def __init__(self, graph: dict):

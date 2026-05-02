@@ -1,6 +1,6 @@
 import pytest
 from search.registry import get_algorithm
-from search.base import TreeSearch
+from search.base import GraphSearch
 
 
 class TestRegistry:
