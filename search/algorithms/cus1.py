@@ -1,7 +1,7 @@
-from search.base import TreeSearch
+from search.base import GraphSearch
 
 
-class CUS1(TreeSearch):
+class CUS1(GraphSearch):
     """Custom Search 1 — uninformed method. To be decided by the team."""
 
     def __init__(self, graph: dict):
