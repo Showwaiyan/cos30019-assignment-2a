@@ -27,7 +27,7 @@ class DFS(GraphSearch):
         # Process nodes in stack order (LIFO - pop from front)
         while queue:
             # Pop node from front of queue
-            node_id, path, cost = queue.popleft()
+            node_id, path, cost = queue.pop()
 
             # Skip if already visited
             if node_id in visited:
@@ -44,16 +44,19 @@ class DFS(GraphSearch):
                     path=path,
                     path_cost=cost,
                     nodes_created=nodes_created
-                )
+                ) 
 
             # Explore neighbors in ascending order by node ID
             node = self._graph.get(node_id)
             if node:
-                for neighbor_id, edge_cost in sorted(node.neighbors, key=lambda x: x[0]):
+                # Get all nodes currently waiting in queue to avoid duplicates
+                waiting_nodes = {n[0] for n in queue}
+                for neighbor_id, edge_cost in sorted(node.neighbors, key=lambda x: x[0], reverse=True):
                     # Add unvisited neighbors to queue
                     if neighbor_id not in visited:
                         queue.append((neighbor_id, path + [neighbor_id], cost + edge_cost))
-                        nodes_created += 1
+                        # count only nodes which are not in waiting_nodes to avoid double counting
+                        nodes_created = nodes_created + 1 if neighbor_id not in waiting_nodes else nodes_created
 
         # No solution found - return result with None values
         return SearchResult(
