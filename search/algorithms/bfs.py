@@ -18,7 +18,7 @@ class BFS(GraphSearch):
             raise ValueError(f"Origin {origin} not found in graph")
 
         visited = set()
-        queue = deque([(origin, [origin], 0.0)])
+        queue = deque([(origin, [origin], 0)])
         nodes_created = 1
 
         while queue:
@@ -48,6 +48,6 @@ class BFS(GraphSearch):
             origin=origin,
             destination=None,
             path=None,
-            path_cost=0.0,
+            path_cost=0,
             nodes_created=nodes_created
         )
