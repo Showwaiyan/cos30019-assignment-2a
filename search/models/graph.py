@@ -14,4 +14,4 @@ class Node:
     id: int
     x: float
     y: float
-    neighbors: list[tuple[int, float]] = field(default_factory=list)
+    neighbors: list[tuple[int, int]] = field(default_factory=list)

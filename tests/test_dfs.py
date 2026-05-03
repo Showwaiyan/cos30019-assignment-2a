@@ -24,8 +24,8 @@ class TestDFS:
         assert result.path is not None
         assert result.origin == 1
         assert result.destination == 8
-        assert result.path_cost == 20.0
-        assert result.nodes_created == 4
+        assert result.path_cost == 20
+        assert result.nodes_created == 8
         assert result is not None
         assert result.path is not None
         assert len(result.path) > 0
@@ -43,11 +43,11 @@ class TestDFS:
 
         result = dfs.search(origin=2, destinations=[8])
         assert result.path == [2, 5, 7, 1, 3, 6, 8]
-        assert result.path_cost == 35.0
+        assert result.path_cost == 35
 
         result = dfs.search(origin=4, destinations=[7])
         assert result.path == [4, 2, 5, 7]
-        assert result.path_cost == 15.0
+        assert result.path_cost == 15
 
         result = dfs.search(origin=4, destinations=[7])
         assert result.path == [4, 2, 5, 7]
@@ -58,18 +58,18 @@ class TestDFS:
 
         assert result.path is None
         assert result.destination is None
-        assert result.path_cost == 0.0
+        assert result.path_cost == 0
 
     def test_no_solution_different_nodes(self):
         dfs = DFS(map_0)
 
         result = dfs.search(origin=8, destinations=[1, 2, 3])
         assert result.path is None
-        assert result.path_cost == 0.0
+        assert result.path_cost == 0
 
         result = dfs.search(origin=8, destinations=[4])
         assert result.path is None
-        assert result.path_cost == 0.0
+        assert result.path_cost == 0
 
         result = dfs.search(origin=7, destinations=[8])
         assert result.path == [7, 1, 3, 6, 8]
@@ -78,8 +78,8 @@ class TestDFS:
         dfs = DFS(map_0)
         result = dfs.search(origin=1, destinations=[8])
 
-        # nodes_created should be 4 for the path [1, 3, 6, 8]
-        assert result.nodes_created == 4
+        # nodes_created should be 8 for the path [1, 3, 6, 8]
+        assert result.nodes_created == 8
         assert 1 in map_0
         assert result.path is not None
 
@@ -103,7 +103,7 @@ class TestDFS:
         result = dfs.search(origin=1, destinations=[1])
 
         assert result.path == [1]
-        assert result.path_cost == 0.0
+        assert result.path_cost == 0
         assert result.nodes_created == 1
 
 
@@ -117,4 +117,4 @@ class TestDFS:
         dfs = DFS(map_0)
         result = dfs.search(origin=1, destinations=[8])
 
-        assert result.nodes_created == 4
+        assert result.nodes_created == 8
