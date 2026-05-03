@@ -18,7 +18,7 @@ class DFS(GraphSearch):
 
         nodes_created = 0
         visited = set()
-        stack = [(origin, [origin], 0)]
+        stack = [(origin, [origin], 0.0)]
 
         while stack:
             node_id, path, cost = stack.pop()
@@ -35,7 +35,7 @@ class DFS(GraphSearch):
                     destination=node_id,
                     path=path,
                     path_cost=cost,
-                    nodes_created=nodes_created
+                    nodes_created=len(visited)
                 )
 
             node = self._graph.get(node_id)
