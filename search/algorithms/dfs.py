@@ -1,5 +1,5 @@
 from search.base import GraphSearch
-from search.models.graph import Node
+from search.models.result import SearchResult
 
 
 class DFS(GraphSearch):
@@ -8,31 +8,47 @@ class DFS(GraphSearch):
     def __init__(self, graph: dict):
         self._graph = graph
 
-    def search(self, origin: int, destinations: list[int]) -> list[Node]:
+    def search(self, origin: int, destinations: list[int]) -> SearchResult:
         for dest in destinations:
             if dest not in self._graph:
                 raise ValueError(f"Destination {dest} not found in graph")
-        
+
         if origin not in self._graph:
             raise ValueError(f"Origin {origin} not found in graph")
 
+        nodes_created = 0
         visited = set()
-        stack = [(origin, [origin])]
+        stack = [(origin, [origin], 0)]
 
         while stack:
-            node_id, path = stack.pop()
+            node_id, path, cost = stack.pop()
 
             if node_id in visited:
                 continue
+
             visited.add(node_id)
+            nodes_created += 1
 
             if node_id in destinations:
-                return [self._graph[nid] for nid in path]
+                return SearchResult(
+                    origin=origin,
+                    destination=node_id,
+                    path=path,
+                    path_cost=cost,
+                    nodes_created=nodes_created
+                )
 
             node = self._graph.get(node_id)
             if node:
-                for neighbor_id, _ in sorted(node.neighbors, key=lambda x: x[0]):
+                for neighbor_id, edge_cost in sorted(node.neighbors, key=lambda x: x[0]):
                     if neighbor_id not in visited:
-                        stack.append((neighbor_id, path + [neighbor_id]))
+                        stack.append((neighbor_id, path + [neighbor_id], cost + edge_cost))
 
-        return []
+        return SearchResult(
+            origin=origin,
+            destination=None,
+            path=None,
+            path_cost=0,
+            nodes_created=nodes_created
+        )
+
