@@ -1,3 +1,4 @@
+from collections import deque
 from search.base import GraphSearch
 from search.models.result import SearchResult
 
@@ -9,26 +10,33 @@ class DFS(GraphSearch):
         self._graph = graph
 
     def search(self, origin: int, destinations: list[int]) -> SearchResult:
+        # Validate all destination nodes exist in graph
         for dest in destinations:
             if dest not in self._graph:
                 raise ValueError(f"Destination {dest} not found in graph")
 
+        # Validate origin node exists in graph
         if origin not in self._graph:
             raise ValueError(f"Origin {origin} not found in graph")
 
-        nodes_created = 0
+        # Initialize: visited set, queue with origin node, nodes_created counter
         visited = set()
-        stack = [(origin, [origin], 0)]
+        queue = deque([(origin, [origin], 0)])
+        nodes_created = 1
 
-        while stack:
-            node_id, path, cost = stack.pop()
+        # Process nodes in stack order (LIFO - pop from front)
+        while queue:
+            # Pop node from front of queue
+            node_id, path, cost = queue.popleft()
 
+            # Skip if already visited
             if node_id in visited:
                 continue
 
+            # Mark node as visited (expanded)
             visited.add(node_id)
-            nodes_created += 1
 
+            # Check if current node is a goal
             if node_id in destinations:
                 return SearchResult(
                     origin=origin,
@@ -38,12 +46,16 @@ class DFS(GraphSearch):
                     nodes_created=nodes_created
                 )
 
+            # Explore neighbors in ascending order by node ID
             node = self._graph.get(node_id)
             if node:
                 for neighbor_id, edge_cost in sorted(node.neighbors, key=lambda x: x[0]):
+                    # Add unvisited neighbors to queue
                     if neighbor_id not in visited:
-                        stack.append((neighbor_id, path + [neighbor_id], cost + edge_cost))
+                        queue.append((neighbor_id, path + [neighbor_id], cost + edge_cost))
+                        nodes_created += 1
 
+        # No solution found - return result with None values
         return SearchResult(
             origin=origin,
             destination=None,
