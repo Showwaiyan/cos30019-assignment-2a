@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from search.models.result import SearchResult
 
 
 class GraphSearch(ABC):
@@ -14,12 +15,12 @@ class GraphSearch(ABC):
         pass
 
     @abstractmethod
-    def search(self, origin: int, destinations: list[int]) -> dict:
+    def search(self, origin: int, destinations: list[int]) -> SearchResult:
         """
         Perform the search from origin to one of the destination nodes.
 
         :param origin: starting node ID
         :param destinations: list of goal node IDs
-        :return: SearchResult as dict
+        :return: SearchResult object
         """
         pass
