@@ -93,3 +93,4 @@ class TestDFS:
         assert result.path == [1]
         assert result.path_cost == 0.0
         assert result.nodes_created == 1
+

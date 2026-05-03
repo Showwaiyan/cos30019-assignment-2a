@@ -21,6 +21,6 @@ class GraphSearch(ABC):
 
         :param origin: starting node ID
         :param destinations: list of goal node IDs
-        :return: SearchResult object
+        :return: SearchResult
         """
         pass

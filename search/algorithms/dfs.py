@@ -51,4 +51,4 @@ class DFS(GraphSearch):
             path_cost=0.0,
             nodes_created=nodes_created
         )
-    
+
