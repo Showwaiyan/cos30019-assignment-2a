@@ -1,4 +1,5 @@
 from search.base import GraphSearch
+from search.models.result import SearchResult
 
 
 class CUS2(GraphSearch):
@@ -7,5 +8,5 @@ class CUS2(GraphSearch):
     def __init__(self, graph: dict):
         pass
 
-    def search(self, origin: int, destinations: list[int]) -> dict:
+    def search(self, origin: int, destinations: list[int]) -> SearchResult:
         pass
