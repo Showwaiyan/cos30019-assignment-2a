@@ -29,9 +29,12 @@ class AStar(GraphSearch):
             )
 
         # Initialize priority queue (open set) with origin node
-        # open_set stores (f_score, node_id) tuples; min-heap returns lowest f_score first
+        # open_set stores (f_score, counter, node_id) tuples
+        # Order: f_score (lowest first), then counter (insertion order), then node_id (ascending)
+        # This satisfies Note2: chronological order when f_score equal, smaller id first as tiebreaker
         open_set = []
-        heapq.heappush(open_set, (0, origin))
+        counter = 0
+        heapq.heappush(open_set, (0, counter, origin))
 
         # came_from tracks parent node for path reconstruction
         came_from = {}
@@ -47,9 +50,9 @@ class AStar(GraphSearch):
 
         while open_set:
             # Pop node with lowest f_score from priority queue
-            # heapq stores (f_score, node_id) tuples; heappop() returns the tuple
-            # Use _ to discard f_score since we only need node_id for expansion
-            _, current = heapq.heappop(open_set)
+            # heapq stores (f_score, counter, node_id) tuples; heappop() returns the tuple
+            # Use _ to discard f_score and counter since we only need node_id for expansion
+            _, _, current = heapq.heappop(open_set)
 
             # Skip if already visited (handles duplicate entries in queue)
             if current in visited:
@@ -98,8 +101,10 @@ class AStar(GraphSearch):
                     goal = min(destinations, key=lambda d: math.sqrt((node.x - self._graph[d].x) ** 2 + (node.y - self._graph[d].y) ** 2))
                     f_score = tentative_g + math.sqrt((node.x - self._graph[goal].x) ** 2 + (node.y - self._graph[goal].y) ** 2)
 
-                    # Add to open set; lower f_score = higher priority in queue
-                    heapq.heappush(open_set, (f_score, neighbor_id))
+                    # Add to open set with updated counter (lower f_score = higher priority)
+                    # counter ensures chronological order when f_score equal (Note2)
+                    heapq.heappush(open_set, (f_score, counter, neighbor_id))
+                    counter += 1
                     nodes_created += 1
 
         # No path found to any destination (search exhausted)
