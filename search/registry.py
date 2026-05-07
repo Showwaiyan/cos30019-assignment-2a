@@ -1,4 +1,4 @@
-from search.base import TreeSearch
+from search.base import GraphSearch
 from search.algorithms.bfs import BFS
 from search.algorithms.dfs import DFS
 from search.algorithms.gbfs import GBFS
@@ -17,13 +17,13 @@ ALGORITHM_REGISTRY = {
 }
 
 
-def get_algorithm(name: str) -> type[TreeSearch]:
+def get_algorithm(name: str) -> type[GraphSearch]:
     """
     Return the algorithm class corresponding to the given name.
     Raises ValueError if the name is not recognised.
 
     :param name: algorithm name string (e.g. 'BFS', 'AS')
-    :return: TreeSearch subclass (not an instance)
+    :return: GraphSearch subclass (not an instance)
     """
     algo_class = ALGORITHM_REGISTRY.get(name.upper())
     if not algo_class:
