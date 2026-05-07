@@ -1,9 +1,9 @@
 from collections import deque
-from search.base import GraphSearch
+from search.base import TreeSearch
 from search.models.result import SearchResult
 
 
-class DFS(GraphSearch):
+class DFS(TreeSearch):
     """Depth-First Search — selects one option, tries it, backtracks when exhausted."""
 
     def __init__(self, graph: dict):

@@ -1,8 +1,8 @@
-from search.base import GraphSearch
+from search.base import TreeSearch
 from search.models.result import SearchResult
 
 
-class AStar(GraphSearch):
+class AStar(TreeSearch):
     """A* Search — uses both path cost g(n) and heuristic h(n) to evaluate nodes."""
 
     def __init__(self, graph: dict):
