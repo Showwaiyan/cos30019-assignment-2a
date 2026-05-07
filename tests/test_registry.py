@@ -1,6 +1,6 @@
 import pytest
 from search.registry import get_algorithm
-from search.base import TreeSearch
+from search.base import GraphSearch
 from search.algorithms.bfs import BFS
 from search.algorithms.dfs import DFS
 from search.algorithms.astar import AStar
@@ -29,9 +29,9 @@ class TestRegistry:
         with pytest.raises(ValueError, match="Algorithm 'INVALID' is not recognized."):
             get_algorithm("INVALID")
 
-    def test_returned_class_is_subclass_of_treesearch(self):
+    def test_returned_class_is_subclass_of_graphsearch(self):
         algo_class = get_algorithm("BFS")
-        assert issubclass(algo_class, TreeSearch)
+        assert issubclass(algo_class, GraphSearch)
         
         algo_class = get_algorithm("AS")
-        assert issubclass(algo_class, TreeSearch)
+        assert issubclass(algo_class, GraphSearch)
