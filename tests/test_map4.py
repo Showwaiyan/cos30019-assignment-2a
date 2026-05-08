@@ -17,11 +17,11 @@ class TestMap4:
     def test_dfs(self):
         """Test DFS with various origin-destination pairs."""
         test_cases = [
-            {"origin": 1, "destinations": [14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 1, "destinations": [7], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 3, "destinations": [14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 5, "destinations": [14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 6, "destinations": [7], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            {"origin": 1, "destinations": [14], "expected_path": [1, 2, 3, 5, 4, 6, 10, 8, 9, 11, 12, 13, 14], "expected_cost": 85, "expected_nodes": 14},
+            {"origin": 1, "destinations": [7], "expected_path": [1, 2, 3, 5, 7], "expected_cost": 27, "expected_nodes": 14},
+            {"origin": 3, "destinations": [14], "expected_path": [3, 1, 2, 4, 5, 6, 10, 8, 9, 11, 12, 13, 14], "expected_cost": 81, "expected_nodes": 14},
+            {"origin": 5, "destinations": [14], "expected_path": [5, 3, 1, 2, 4, 6, 10, 8, 9, 11, 12, 13, 14], "expected_cost": 86, "expected_nodes": 14},
+            {"origin": 6, "destinations": [7], "expected_path": [6, 4, 2, 1, 3, 5, 7], "expected_cost": 46, "expected_nodes": 8},
         ]
 
         dfs = DFS(self.graph)
@@ -43,11 +43,11 @@ class TestMap4:
     def test_bfs(self):
         """Test BFS with various origin-destination pairs."""
         test_cases = [
-            {"origin": 1, "destinations": [14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 3, "destinations": [7, 14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 5, "destinations": [14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 6, "destinations": [7, 13], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 7, "destinations": [14], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            {"origin": 1, "destinations": [14], "expected_path": [1, 2, 4, 10, 11, 14], "expected_cost": 50, "expected_nodes": 14},
+            {"origin": 3, "destinations": [7, 14], "expected_path": [3, 5, 7], "expected_cost": 18, "expected_nodes": 8},
+            {"origin": 5, "destinations": [14], "expected_path": [5, 4, 10, 11, 14], "expected_cost": 47, "expected_nodes": 14},
+            {"origin": 6, "destinations": [7, 13], "expected_path": [6, 5, 7], "expected_cost": 15, "expected_nodes": 12},
+            {"origin": 7, "destinations": [14], "expected_path": [7, 5, 4, 10, 11, 14], "expected_cost": 59, "expected_nodes": 14},
         ]
 
         bfs = BFS(self.graph)
