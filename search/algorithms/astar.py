@@ -34,7 +34,7 @@ class AStar(GraphSearch):
         # This satisfies Note2: chronological order when f_score equal, smaller id first as tiebreaker
         open_set = []
         counter = 0
-        heapq.heappush(open_set, (0, counter, origin))
+        heapq.heappush(open_set, (0, origin, counter))
 
         # came_from tracks parent node for path reconstruction
         came_from = {}
@@ -52,7 +52,7 @@ class AStar(GraphSearch):
             # Pop node with lowest f_score from priority queue
             # heapq stores (f_score, counter, node_id) tuples; heappop() returns the tuple
             # Use _ to discard f_score and counter since we only need node_id for expansion
-            _, _, current = heapq.heappop(open_set)
+            _, current, _ = heapq.heappop(open_set)
 
             # Skip if already visited (handles duplicate entries in queue)
             if current in visited:
@@ -103,7 +103,7 @@ class AStar(GraphSearch):
 
                     # Add to open set with updated counter (lower f_score = higher priority)
                     # counter ensures chronological order when f_score equal (Note2)
-                    heapq.heappush(open_set, (f_score, counter, neighbor_id))
+                    heapq.heappush(open_set, (f_score, neighbor_id, counter))
                     counter += 1
                     nodes_created += 1
 
