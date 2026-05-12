@@ -30,10 +30,14 @@ class TestMap1:
 
             assert result is not None
             assert result.origin == tc["origin"]
-            assert result.path == tc["expected_path"]
+            if tc["expected_path"] is None:
+                assert result.path is None
+            else:
+                assert result.path == tc["expected_path"]
             assert result.path_cost == tc["expected_cost"]
             assert result.nodes_created == tc["expected_nodes"]
-            assert result.destination == tc["expected_path"][-1]
+            if tc["expected_path"] is not None:
+                assert result.destination == tc["expected_path"][-1]
 
     def test_bfs(self):
         """Test BFS with various origin-destination pairs."""
@@ -51,7 +55,11 @@ class TestMap1:
 
             assert result is not None
             assert result.origin == tc["origin"]
-            assert result.path == tc["expected_path"]
+            if tc["expected_path"] is None:
+                assert result.path is None
+            else:
+                assert result.path == tc["expected_path"]
             assert result.path_cost == tc["expected_cost"]
             assert result.nodes_created == tc["expected_nodes"]
-            assert result.destination == tc["expected_path"][-1]
+            if tc["expected_path"] is not None:
+                assert result.destination == tc["expected_path"][-1]
