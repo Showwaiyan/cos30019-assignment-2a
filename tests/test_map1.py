@@ -68,11 +68,11 @@ class TestMap1:
     def test_astar(self):
         """Test A* with various origin-destination pairs."""
         test_cases = [
-            {"origin": 1, "destinations": [5, 7], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 3, "destinations": [1], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 6, "destinations": [3], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 7, "destinations": [1], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
-            {"origin": 4, "destinations": [5, 7], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            {"origin": 1, "destinations": [5, 7], "expected_path": [1, 6, 5], "expected_cost": 15, "expected_nodes": 5},
+            {"origin": 3, "destinations": [1], "expected_path": [3, 2, 4, 1], "expected_cost": 18, "expected_nodes": 7},
+            {"origin": 6, "destinations": [3], "expected_path": [6, 4, 2, 3], "expected_cost": 15, "expected_nodes": 7},
+            {"origin": 7, "destinations": [1], "expected_path": [7, 4, 1], "expected_cost": 12, "expected_nodes": 7},
+            {"origin": 4, "destinations": [5, 7], "expected_path": [4, 6, 5], "expected_cost": 14, "expected_nodes": 6},
         ]
 
         astar = AStar(self.graph)
