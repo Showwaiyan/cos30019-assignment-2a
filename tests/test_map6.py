@@ -17,7 +17,7 @@ class TestMap6:
 
     def test_dfs(self):
         test_cases = [
-            {"origin": 1, "destinations": [12], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            {"origin": 1, "destinations": [12], "expected_path": [1, 2, 3, 4, 11, 12], "expected_cost": 36, "expected_nodes": 12},
         ]
 
         dfs = DFS(self.graph)
@@ -37,7 +37,7 @@ class TestMap6:
 
     def test_bfs(self):
         test_cases = [
-            {"origin": 1, "destinations": [12], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            {"origin": 1, "destinations": [12], "expected_path": [1, 2, 3, 4, 11, 12], "expected_cost": 36, "expected_nodes": 12},
         ]
 
         bfs = BFS(self.graph)
@@ -57,7 +57,7 @@ class TestMap6:
 
     def test_astar(self):
         test_cases = [
-            {"origin": 1, "destinations": [12], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            {"origin": 1, "destinations": [12], "expected_path": [1, 5, 6, 7, 11, 12], "expected_cost": 14, "expected_nodes": 11},
         ]
 
         astar = AStar(self.graph)
