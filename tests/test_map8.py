@@ -5,29 +5,28 @@ from search.algorithms.astar import AStar
 from search.services.parser import load_map
 
 
-class TestMap3:
-    """Integration tests for Map3 using DFS."""
+class TestMap8:
+    """Integration tests for Map8 using DFS, BFS, and AStar."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        """Load Map3 before each test."""
-        origin, destinations, self.graph = load_map("maps/Map3.txt")
+        """Load Map8 before each test."""
+        origin, destinations, self.graph = load_map("maps/Map8.txt")
         self.origin = origin
         self.destinations = destinations
 
     def test_dfs(self):
         """Test DFS with various origin-destination pairs."""
+        # Note: Please update the origin and destinations to match Map8's actual nodes
         test_cases = [
-            {"origin": 2, "destinations": [7], "expected_path": None, "expected_cost":0 , "expected_nodes": 7},
-            {"origin": 2, "destinations": [6], "expected_path": [2, 1, 3, 5, 4, 6], "expected_cost": 32, "expected_nodes": 7},
-            {"origin": 1, "destinations": [7], "expected_path": None, "expected_cost": 0, "expected_nodes": 7},
-            {"origin": 3, "destinations": [6], "expected_path": [3, 1, 2, 4, 5, 8, 6], "expected_cost": 48, "expected_nodes": 7},
-            {"origin": 5, "destinations": [1], "expected_path": [5, 2, 1], "expected_cost": 14, "expected_nodes": 6},
+            {"origin": 1, "destinations": [16], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
+            
         ]
 
         dfs = DFS(self.graph)
         for tc in test_cases:
-            result = dfs.search(origin=tc["origin"], destinations=tc["destinations"])
+            result = dfs.search(
+                origin=tc["origin"], destinations=tc["destinations"])
 
             assert result is not None
             assert result.origin == tc["origin"]
@@ -43,16 +42,13 @@ class TestMap3:
     def test_bfs(self):
         """Test BFS with various origin-destination pairs."""
         test_cases = [
-            {"origin": 2, "destinations": [6], "expected_path": [2, 4, 6], "expected_cost": 13, "expected_nodes": 7},
-            {"origin": 1, "destinations": [6], "expected_path": [1, 2, 4, 6], "expected_cost": 19, "expected_nodes": 7},
-            {"origin": 3, "destinations": [6], "expected_path": [3, 2, 4, 6], "expected_cost": 21, "expected_nodes": 7},
-            {"origin": 5, "destinations": [1], "expected_path": [5, 2, 1], "expected_cost": 14, "expected_nodes": 7},
-            {"origin": 4, "destinations": [1], "expected_path": [4, 2, 1], "expected_cost": 13, "expected_nodes": 7},
+            {"origin": 9, "destinations": [16], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
         ]
 
         bfs = BFS(self.graph)
         for tc in test_cases:
-            result = bfs.search(origin=tc["origin"], destinations=tc["destinations"])
+            result = bfs.search(
+                origin=tc["origin"], destinations=tc["destinations"])
 
             assert result is not None
             assert result.origin == tc["origin"]
@@ -68,11 +64,7 @@ class TestMap3:
     def test_astar(self):
         """Test A* with various origin-destination pairs."""
         test_cases = [
-            {"origin": 2, "destinations": [6], "expected_path": [2, 4, 6], "expected_cost": 13, "expected_nodes": 7},
-            {"origin": 1, "destinations": [6], "expected_path": [1, 2, 4, 6], "expected_cost": 19, "expected_nodes": 7},
-            {"origin": 3, "destinations": [6], "expected_path": [3, 5, 4, 6], "expected_cost": 17, "expected_nodes": 7},
-            {"origin": 5, "destinations": [1], "expected_path": [5, 3, 1], "expected_cost": 14, "expected_nodes": 6},
-            {"origin": 4, "destinations": [1, 6], "expected_path": [4, 6], "expected_cost": 6, "expected_nodes": 5},
+            {"origin": 2, "destinations": [2], "expected_path": [], "expected_cost": 0, "expected_nodes": 0},
         ]
 
         astar = AStar(self.graph)
