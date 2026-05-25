@@ -6,19 +6,15 @@ class Logger:
 
     @staticmethod
     def print_result(result: SearchResult) -> None:
-        """
-        Print the search result to stdout in the required assignment format.
+        print(f"Starting Node: {result.origin}")
 
-        If no solution found:
-            <origin> <destination>
-            No solution found.
+        dest = result.destination if result.destination is not None else "N/A"
+        print(f"Destination Node: {dest}")
+        print(f"Number of nodes created: {result.nodes_created}")
 
-        If solution found:
-            <origin> <destination>
-            <number_of_nodes_created>
-            <path>
-            <path_cost>
-
-        :param result: SearchResult dataclass instance
-        """
-        pass
+        if result.path is None:
+            print("No solution found.")
+        else:
+            path_str = " -> ".join(str(n) for n in result.path)
+            print(f"Path: {path_str}")
+            print(f"Path Cost: {result.path_cost}")
