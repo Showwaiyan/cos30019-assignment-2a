@@ -7,7 +7,7 @@ from search.services.parser import load_map
 
 
 class TestMap2:
-    """Integration tests for Map2 using DFS and BFS."""
+    """Integration tests for Map2 using DFS, BFS, and AStar."""
 
     @pytest.fixture(autouse=True)
     def setup(self):
