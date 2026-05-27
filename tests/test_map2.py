@@ -2,6 +2,7 @@ import pytest
 from search.algorithms.dfs import DFS
 from search.algorithms.bfs import BFS
 from search.algorithms.astar import AStar
+from search.algorithms.gbfs import GBFS
 from search.services.parser import load_map
 
 
@@ -78,6 +79,18 @@ class TestMap2:
         astar = AStar(self.graph)
         for tc in test_cases:
             result = astar.search(origin=tc["origin"], destinations=tc["destinations"])
+            assert result.destination == tc["expected_path"][-1]
+
+
+    def test_gbfs(self):
+        """Test GBFS with various origin-destination pairs."""
+        test_cases = [
+            {"origin": 1, "destinations": [11], "expected_path": [1, 6, 7, 9, 11], "expected_cost": 29, "expected_nodes": 11},
+        ]
+
+        gbfs = GBFS(self.graph)
+        for tc in test_cases:
+            result = gbfs.search(origin=tc["origin"], destinations=tc["destinations"])
 
             assert result is not None
             assert result.origin == tc["origin"]
