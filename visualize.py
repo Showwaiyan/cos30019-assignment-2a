@@ -652,6 +652,81 @@ class Slider:
         pygame.draw.circle(surface, COLOR_BORDER_ACTIVE, (self.handle_x, self.rect.centery), self.handle_radius, width=2)
 
 
+class TextInput:
+    def __init__(self, x, y, w, h, placeholder="", callback=None):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.text = ""
+        self.placeholder = placeholder
+        self.callback = callback
+        self.active = False
+        self.cursor_visible = True
+        self.cursor_timer = 0
+        self.is_hovered = False
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            self.is_hovered = self.rect.collidepoint(event.pos)
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                self.active = self.rect.collidepoint(event.pos)
+        elif event.type == pygame.KEYDOWN and self.active:
+            if event.key == pygame.K_RETURN:
+                if self.callback:
+                    self.callback(self.text)
+            elif event.key == pygame.K_BACKSPACE:
+                self.text = self.text[:-1]
+            else:
+                # Add printable characters
+                if event.unicode and event.unicode.isprintable():
+                    self.text += event.unicode
+
+    def update(self):
+        # Blink cursor
+        self.cursor_timer += 1
+        if self.cursor_timer >= 30: # roughly every 500ms at 60 FPS
+            self.cursor_visible = not self.cursor_visible
+            self.cursor_timer = 0
+
+    def draw(self, surface):
+        box_color = COLOR_PANEL_BG
+        border_color = COLOR_BORDER_ACTIVE if self.active else (COLOR_BORDER if not self.is_hovered else (147, 197, 253))
+        
+        pygame.draw.rect(surface, box_color, self.rect, border_radius=6)
+        pygame.draw.rect(surface, border_color, self.rect, width=2 if self.active else 1, border_radius=6)
+
+        # Draw text or placeholder
+        if self.text:
+            disp_text = self.text
+            txt_color = COLOR_TEXT_PRIMARY
+        else:
+            disp_text = self.placeholder
+            txt_color = COLOR_TEXT_MUTED
+
+        txt_surf = FONT_UI.render(disp_text, True, txt_color)
+        text_w, text_h = FONT_UI.size(disp_text)
+        
+        max_w = self.rect.width - 16
+        if text_w > max_w:
+            # Scroll text left so the end of text is always visible
+            start_idx = 0
+            while FONT_UI.size(disp_text[start_idx:])[0] > max_w:
+                start_idx += 1
+            disp_surf = FONT_UI.render(disp_text[start_idx:], True, txt_color)
+            visible_w = FONT_UI.size(disp_text[start_idx:])[0]
+        else:
+            disp_surf = txt_surf
+            visible_w = text_w
+
+        surface.blit(disp_surf, (self.rect.x + 8, self.rect.y + (self.rect.height - disp_surf.get_height()) // 2))
+
+        # Blinking cursor line
+        if self.active and self.cursor_visible:
+            cursor_x = self.rect.x + 8 + visible_w + 2
+            cursor_y1 = self.rect.y + 6
+            cursor_y2 = self.rect.y + self.rect.height - 6
+            pygame.draw.line(surface, COLOR_TEXT_PRIMARY, (cursor_x, cursor_y1), (cursor_x, cursor_y2), 2)
+
+
 # =====================================================================
 # DYNAMIC PANEL AND EDGE/NODE RENDERING HELPERS
 # =====================================================================
@@ -767,7 +842,7 @@ class VisualizerApp:
     def __init__(self):
         # Window configuration
         self.width = 1400
-        self.height = 900
+        self.height = 950
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Graph Search Visualizer — Side-by-Side Comparison")
         
@@ -776,17 +851,39 @@ class VisualizerApp:
 
         # Scan for map files in the 'maps/' directory
         self.maps_dir = "maps"
-        self.map_files = []
+        self.map_paths = []
         if os.path.exists(self.maps_dir):
-            self.map_files = sorted([f for f in os.listdir(self.maps_dir) if f.endswith(".txt")])
+            self.map_paths = sorted([os.path.join(self.maps_dir, f) for f in os.listdir(self.maps_dir) if f.endswith(".txt")])
         
-        if not self.map_files:
-            print("Error: No map text files found in the 'maps/' directory!")
-            pygame.quit()
-            sys.exit(1)
+        # Check command line arguments for a specific map file
+        if len(sys.argv) > 1:
+            arg_path = sys.argv[1]
+            if os.path.exists(arg_path):
+                abs_path = os.path.abspath(arg_path)
+                if abs_path not in [os.path.abspath(p) for p in self.map_paths]:
+                    self.map_paths.append(abs_path)
+                    # Sort them by their basename for consistency
+                    self.map_paths = sorted(self.map_paths, key=os.path.basename)
+                # Find the index of the matched path
+                for idx, path in enumerate(self.map_paths):
+                    if os.path.abspath(path) == abs_path:
+                        self.current_map_idx = idx
+                        break
+            else:
+                print(f"Warning: Specified map file '{arg_path}' not found. Defaulting to available maps.")
+                if not self.map_paths:
+                    print("Error: No map text files found in the 'maps/' directory!")
+                    pygame.quit()
+                    sys.exit(1)
+                self.current_map_idx = 0
+        else:
+            if not self.map_paths:
+                print("Error: No map text files found in the 'maps/' directory!")
+                pygame.quit()
+                sys.exit(1)
+            self.current_map_idx = 0
 
-        self.current_map_idx = 0
-        self.current_map_file = self.map_files[self.current_map_idx]
+        self.current_map_path = self.map_paths[self.current_map_idx]
 
         # Algorithm Selection States
         # Order: BFS, DFS, GBFS, A*, CUS1 (disabled), CUS2
@@ -817,6 +914,20 @@ class VisualizerApp:
         self.sim_states = {}  # name -> latest state dict
         self.real_metrics = {} # name -> { 'path': list, 'cost': float, 'nodes_created': int, 'time_ms': float }
 
+        # Error / Success feedback states
+        self.ui_error_message = ""
+        self.ui_error_time = 0.0
+
+        # Custom Cross-Platform File Picker states
+        self.show_file_picker = False
+        self.picker_current_dir = os.path.abspath(".")
+        self.picker_items = []
+        self.picker_scroll_offset = 0
+        self.picker_item_rects = []
+
+        # Enable smooth keyboard repeats for text input (delay 500ms, repeat 50ms)
+        pygame.key.set_repeat(500, 50)
+
         # Setup GUI controls
         self.setup_ui()
 
@@ -824,48 +935,104 @@ class VisualizerApp:
         self.load_map_file()
 
     def setup_ui(self):
-        # UI Coordinates
         sidebar_x = 20
-        y_offset = 30
 
-        # Sidebar Title
-        # Will render dynamically in draw()
+        # 1. Map Input & Navigation (y: 90 to 220)
+        self.btn_browse_map = Button(sidebar_x, 115, 280, 30, "Browse Map File...", COLOR_PANEL_BG, (30, 41, 59), callback=self.browse_file)
+        self.btn_prev_map = Button(sidebar_x, 155, 45, 30, "<", COLOR_PANEL_BG, (30, 41, 59), callback=self.prev_map)
+        self.btn_next_map = Button(sidebar_x + 235, 155, 45, 30, ">", COLOR_PANEL_BG, (30, 41, 59), callback=self.next_map)
 
-        # 1. Map Navigation
-        y_offset = 70
-        self.btn_prev_map = Button(sidebar_x, y_offset, 45, 30, "<", COLOR_PANEL_BG, (30, 41, 59), callback=self.prev_map)
-        self.btn_next_map = Button(sidebar_x + 235, y_offset, 45, 30, ">", COLOR_PANEL_BG, (30, 41, 59), callback=self.next_map)
-
-        # 2. Algorithm Checkboxes
-        y_offset = 150
+        # 2. Algorithm Checkboxes (y: 235 to 450)
         self.checkboxes = []
-        
-        # Selectable algorithms
+        y_offset = 265
         for name in ["BFS", "DFS", "GBFS", "A*", "CUS2"]:
             cb = Checkbox(sidebar_x, y_offset, name, checked=self.algo_selections[name], 
                           callback=lambda val, n=name: self.toggle_algo(n, val))
             self.checkboxes.append(cb)
             y_offset += 30
 
-        # Add disabled CUS1
         cb_cus1 = Checkbox(sidebar_x, y_offset, "CUS1 (TBD / Not Implemented)", checked=False, disabled=True)
         self.checkboxes.append(cb_cus1)
-        y_offset += 45
 
-        # 3. Speed Slider
-        self.speed_slider = Slider(sidebar_x, y_offset + 20, 280, 1, 60, self.sim_speed, "Speed (Steps/sec)", callback=self.set_speed)
-        y_offset += 60
+        # 3. Speed Slider & Controls (y: 460 to 640)
+        self.speed_slider = Slider(sidebar_x, 515, 280, 1, 60, self.sim_speed, "Speed (Steps/sec)", callback=self.set_speed)
+        self.btn_play_pause = Button(sidebar_x, 545, 135, 35, "Play", (16, 185, 129), (52, 211, 153), callback=self.toggle_play)
+        self.btn_step = Button(sidebar_x + 145, 545, 135, 35, "Step", COLOR_PANEL_BG, (30, 41, 59), callback=self.step_once)
+        self.btn_reset = Button(sidebar_x, 590, 280, 35, "Reset Simulation", (239, 68, 68), (248, 113, 113), callback=self.reset_simulation)
 
-        # 4. Simulation Controls
-        y_offset += 20
-        self.btn_play_pause = Button(sidebar_x, y_offset, 135, 35, "Play", (16, 185, 129), (52, 211, 153), callback=self.toggle_play)
-        self.btn_step = Button(sidebar_x + 145, y_offset, 135, 35, "Step", COLOR_PANEL_BG, (30, 41, 59), callback=self.step_once)
-        y_offset += 45
-        
-        self.btn_reset = Button(sidebar_x, y_offset, 280, 35, "Reset Simulation", (239, 68, 68), (248, 113, 113), callback=self.reset_simulation)
+    def set_ui_error(self, msg):
+        self.ui_error_message = msg
+        self.ui_error_time = time.time()
+
+    def populate_picker_items(self):
+        try:
+            items = os.listdir(self.picker_current_dir)
+            dirs = []
+            files = []
+            
+            # Parent directory link
+            parent_dir = os.path.abspath(os.path.join(self.picker_current_dir, ".."))
+            dirs.append(("..", parent_dir, True))
+            
+            for item in sorted(items):
+                if item.startswith('.'):
+                    continue
+                path = os.path.join(self.picker_current_dir, item)
+                if os.path.isdir(path):
+                    dirs.append((item + "/", path, True))
+                elif item.endswith('.txt'):
+                    files.append((item, path, False))
+                    
+            self.picker_items = dirs + files
+            self.picker_scroll_offset = 0
+        except Exception as e:
+            print(f"Error populating file explorer items: {e}")
+            self.picker_items = [("..", os.path.abspath(os.path.join(self.picker_current_dir, "..")), True)]
+
+    def browse_file(self):
+        # Open our custom cross-platform file picker modal
+        self.show_file_picker = True
+        if not os.path.exists(self.picker_current_dir):
+            self.picker_current_dir = os.path.abspath(".")
+        self.populate_picker_items()
+
+    def load_custom_map_path(self, filepath):
+        filepath = filepath.strip()
+        if not filepath:
+            self.set_ui_error("Empty path!")
+            return
+            
+        target_path = None
+        if os.path.exists(filepath):
+            target_path = os.path.abspath(filepath)
+        elif os.path.exists(os.path.join(self.maps_dir, filepath)):
+            target_path = os.path.abspath(os.path.join(self.maps_dir, filepath))
+            
+        if target_path:
+            try:
+                # Validate by parsing
+                load_map(target_path)
+                
+                # If valid, append and select
+                if target_path not in [os.path.abspath(p) for p in self.map_paths]:
+                    self.map_paths.append(target_path)
+                    self.map_paths = sorted(self.map_paths, key=os.path.basename)
+                    
+                for idx, path in enumerate(self.map_paths):
+                    if os.path.abspath(path) == target_path:
+                        self.current_map_idx = idx
+                        break
+                self.current_map_path = target_path
+                self.load_map_file()
+                self.ui_error_message = ""
+            except Exception as e:
+                self.set_ui_error("Format Error!")
+                print(f"Error validating map format: {e}")
+        else:
+            self.set_ui_error("File not found!")
 
     def load_map_file(self):
-        filepath = os.path.join(self.maps_dir, self.current_map_file)
+        filepath = self.current_map_path
         try:
             self.origin, self.destinations, self.graph = load_map(filepath)
             
@@ -891,18 +1058,18 @@ class VisualizerApp:
             
             self.reset_simulation()
         except Exception as e:
-            print(f"Error loading map file {self.current_map_file}: {e}")
+            print(f"Error loading map file {os.path.basename(self.current_map_path)}: {e}")
 
     def prev_map(self):
-        if self.map_files:
-            self.current_map_idx = (self.current_map_idx - 1) % len(self.map_files)
-            self.current_map_file = self.map_files[self.current_map_idx]
+        if self.map_paths:
+            self.current_map_idx = (self.current_map_idx - 1) % len(self.map_paths)
+            self.current_map_path = self.map_paths[self.current_map_idx]
             self.load_map_file()
 
     def next_map(self):
-        if self.map_files:
-            self.current_map_idx = (self.current_map_idx + 1) % len(self.map_files)
-            self.current_map_file = self.map_files[self.current_map_idx]
+        if self.map_paths:
+            self.current_map_idx = (self.current_map_idx + 1) % len(self.map_paths)
+            self.current_map_path = self.map_paths[self.current_map_idx]
             self.load_map_file()
 
     def toggle_algo(self, name, checked):
@@ -1017,7 +1184,42 @@ class VisualizerApp:
                 self.running = False
                 return
 
+            if self.show_file_picker:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Left Click
+                        # Check cancel button
+                        cancel_rect = pygame.Rect(350 + 700 - 130, 120 + 600 - 45, 100, 32)
+                        if cancel_rect.collidepoint(event.pos):
+                            self.show_file_picker = False
+                            return
+                        
+                        # Check list items click
+                        for rect, path, is_dir in self.picker_item_rects:
+                            if rect.collidepoint(event.pos):
+                                if is_dir:
+                                    self.picker_current_dir = path
+                                    self.populate_picker_items()
+                                else:
+                                    self.load_custom_map_path(path)
+                                    self.show_file_picker = False
+                                return
+                    elif event.button == 4:  # Scroll Up
+                        self.picker_scroll_offset = max(0, self.picker_scroll_offset - 1)
+                    elif event.button == 5:  # Scroll Down
+                        max_offset = max(0, len(self.picker_items) - 12)
+                        self.picker_scroll_offset = min(max_offset, self.picker_scroll_offset + 1)
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.show_file_picker = False
+                    elif event.key == pygame.K_UP:
+                        self.picker_scroll_offset = max(0, self.picker_scroll_offset - 1)
+                    elif event.key == pygame.K_DOWN:
+                        max_offset = max(0, len(self.picker_items) - 12)
+                        self.picker_scroll_offset = min(max_offset, self.picker_scroll_offset + 1)
+                continue
+
             # Feed events to UI controls
+            self.btn_browse_map.handle_event(event)
             self.btn_prev_map.handle_event(event)
             self.btn_next_map.handle_event(event)
             for cb in self.checkboxes:
@@ -1046,57 +1248,89 @@ class VisualizerApp:
 
         # Map Selector Panel
         lbl_map = FONT_SECTION.render("SELECT MAP GRAPH", True, COLOR_TEXT_MUTED)
-        self.screen.blit(lbl_map, (20, 105))
+        self.screen.blit(lbl_map, (20, 90))
+        
+        self.btn_browse_map.draw(self.screen)
         
         self.btn_prev_map.draw(self.screen)
-        map_name_surf = FONT_UI.render(self.current_map_file, True, COLOR_TEXT_PRIMARY)
-        map_name_rect = map_name_surf.get_rect(center=(160, 85))
+        map_name_surf = FONT_UI.render(os.path.basename(self.current_map_path), True, COLOR_TEXT_PRIMARY)
+        map_name_rect = map_name_surf.get_rect(center=(160, 170))
         self.screen.blit(map_name_surf, map_name_rect)
         self.btn_next_map.draw(self.screen)
 
+        # Draw error message if present
+        if self.ui_error_message:
+            if time.time() - self.ui_error_time > 3.0:
+                self.ui_error_message = ""
+            else:
+                err_surf = FONT_UI.render(self.ui_error_message, True, COLOR_NODE_GOAL)
+                self.screen.blit(err_surf, (20, 195))
+
+        # Separator line
+        pygame.draw.line(self.screen, COLOR_BORDER, (20, 220), (300, 220), 1)
+
         # Draw Checkboxes
         lbl_algos = FONT_SECTION.render("SEARCH ALGORITHMS", True, COLOR_TEXT_MUTED)
-        self.screen.blit(lbl_algos, (20, 130))
+        self.screen.blit(lbl_algos, (20, 235))
         for cb in self.checkboxes:
             cb.draw(self.screen)
 
+        # Separator line
+        pygame.draw.line(self.screen, COLOR_BORDER, (20, 450), (300, 450), 1)
+
+        # Speed Slider & Controls Section Title
+        lbl_sim = FONT_SECTION.render("SPEED / SIMULATION", True, COLOR_TEXT_MUTED)
+        self.screen.blit(lbl_sim, (20, 460))
+        
         # Speed Slider & Controls
         self.speed_slider.draw(self.screen)
         self.btn_play_pause.draw(self.screen)
         self.btn_step.draw(self.screen)
         self.btn_reset.draw(self.screen)
 
-        # Legend panel at bottom of sidebar
-        legend_y = 660
+        # Legend panel at bottom of sidebar (2-column layout to save vertical space)
+        legend_y = 655
         lbl_legend = FONT_SECTION.render("LEGEND", True, COLOR_TEXT_MUTED)
         self.screen.blit(lbl_legend, (20, legend_y))
         
-        legend_items = [
-            ("Start Node", COLOR_NODE_START),
-            ("Goal Node", COLOR_NODE_GOAL),
-            ("Current Node", COLOR_NODE_CURRENT),
-            ("Frontier Node", COLOR_NODE_FRONTIER),
-            ("Explored Node", COLOR_NODE_VISITED),
-            ("Unexplored Edge", COLOR_EDGE_UNEXPLORED),
-            ("Final Path Edge", COLOR_EDGE_PATH)
+        legend_col1 = [
+            ("Start Node", COLOR_NODE_START, True),
+            ("Goal Node", COLOR_NODE_GOAL, True),
+            ("Current Node", COLOR_NODE_CURRENT, True),
+            ("Frontier Node", COLOR_NODE_FRONTIER, True)
         ]
-        
+        legend_col2 = [
+            ("Explored Node", COLOR_NODE_VISITED, True),
+            ("Unexplored Edge", COLOR_EDGE_UNEXPLORED, False),
+            ("Final Path Edge", COLOR_EDGE_PATH, False)
+        ]
+
+        # Draw Col 1
         item_y = legend_y + 25
-        for text, color in legend_items:
-            # Draw color sample (circle for nodes, line for edges)
-            if "Edge" in text:
-                pygame.draw.line(self.screen, color, (25, item_y + 7), (40, item_y + 7), 3)
+        for text, color, is_node in legend_col1:
+            if is_node:
+                pygame.draw.circle(self.screen, color, (30, item_y + 7), 6)
             else:
-                pygame.draw.circle(self.screen, color, (32, item_y + 7), 6)
-                
+                pygame.draw.line(self.screen, color, (20, item_y + 7), (40, item_y + 7), 3)
             txt_surf = FONT_UI.render(text, True, COLOR_TEXT_PRIMARY)
-            self.screen.blit(txt_surf, (55, item_y))
-            item_y += 22
+            self.screen.blit(txt_surf, (48, item_y))
+            item_y += 24
+
+        # Draw Col 2
+        item_y = legend_y + 25
+        for text, color, is_node in legend_col2:
+            if is_node:
+                pygame.draw.circle(self.screen, color, (175, item_y + 7), 6)
+            else:
+                pygame.draw.line(self.screen, color, (165, item_y + 7), (185, item_y + 7), 3)
+            txt_surf = FONT_UI.render(text, True, COLOR_TEXT_PRIMARY)
+            self.screen.blit(txt_surf, (193, item_y))
+            item_y += 24
 
         # =====================================================================
         # MAIN GRID DRAWING
         # =====================================================================
-        main_rect = (320, 0, 1080, 900)
+        main_rect = (320, 0, 1080, 950)
         active_algos = [name for name, sel in self.algo_selections.items() if sel]
         k = len(active_algos)
 
@@ -1292,8 +1526,91 @@ class VisualizerApp:
             self.screen.blit(path_surf, (px + 20, py + ph - 40))
 
         # Draw a tiny info footer on the main screen
-        footer_surf = FONT_METRICS.render("Visualizer advances frame-by-frame dynamically. Start node has glowing outer ring.", True, COLOR_TEXT_MUTED)
-        self.screen.blit(footer_surf, (340, self.height - 25))
+        # footer_surf = FONT_METRICS.render("Visualizer advances frame-by-frame dynamically. Start node has glowing outer ring.", True, COLOR_TEXT_MUTED)
+        # self.screen.blit(footer_surf, (340, self.height - 25))
+
+        # =====================================================================
+        # CROSS-PLATFORM FILE PICKER MODAL OVERLAY
+        # =====================================================================
+        if self.show_file_picker:
+            # Dim background
+            dim_surf = pygame.Surface((self.width, self.height))
+            dim_surf.set_alpha(200)
+            dim_surf.fill((10, 15, 25))
+            self.screen.blit(dim_surf, (0, 0))
+
+            # Picker Container
+            px, py, pw, ph = 350, 120, 700, 600
+            dialog_rect = pygame.Rect(px, py, pw, ph)
+            pygame.draw.rect(self.screen, COLOR_SIDEBAR_BG, dialog_rect, border_radius=12)
+            pygame.draw.rect(self.screen, COLOR_BORDER_ACTIVE, dialog_rect, width=2, border_radius=12)
+
+            # Title
+            title_surf = FONT_TITLE.render("Select Map Text File", True, COLOR_TEXT_PRIMARY)
+            self.screen.blit(title_surf, (px + 30, py + 25))
+
+            # Current Path
+            path_text = f"Folder: {self.picker_current_dir}"
+            # Truncate path if too long
+            max_path_pixels = 640
+            if FONT_UI.size(path_text)[0] > max_path_pixels:
+                path_text = "..." + self.picker_current_dir[-45:]
+            path_surf = FONT_METRICS.render(path_text, True, COLOR_TEXT_MUTED)
+            self.screen.blit(path_surf, (px + 30, py + 55))
+
+            # Horizontal divider line
+            pygame.draw.line(self.screen, COLOR_BORDER, (px + 30, py + 80), (px + pw - 30, py + 80), 1)
+
+            # Draw items list
+            self.picker_item_rects.clear()
+            list_y = py + 95
+            visible_count = 12
+            visible_items = self.picker_items[self.picker_scroll_offset : self.picker_scroll_offset + visible_count]
+            
+            mouse_pos = pygame.mouse.get_pos()
+
+            for idx, (name, path, is_dir) in enumerate(visible_items):
+                item_rect = pygame.Rect(px + 30, list_y + idx * 35, pw - 60, 30)
+                is_hovered = item_rect.collidepoint(mouse_pos)
+                
+                # Draw hover background
+                if is_hovered:
+                    bg_col = (30, 41, 59) # Slate 800
+                    pygame.draw.rect(self.screen, bg_col, item_rect, border_radius=6)
+                    pygame.draw.rect(self.screen, COLOR_BORDER_ACTIVE, item_rect, width=1, border_radius=6)
+                
+                # Decide icon and text color
+                if name.startswith(".."):
+                    icon = "↩  "
+                    color = COLOR_TEXT_MUTED
+                elif is_dir:
+                    icon = "📁  "
+                    color = COLOR_NODE_FRONTIER
+                else:
+                    icon = "📄  "
+                    color = COLOR_TEXT_PRIMARY
+
+                item_text = icon + name
+                text_surf = FONT_UI.render(item_text, True, color)
+                self.screen.blit(text_surf, (item_rect.x + 10, item_rect.y + (item_rect.height - text_surf.get_height()) // 2))
+                
+                self.picker_item_rects.append((item_rect, path, is_dir))
+
+            # Scroll indicators / position footer
+            if len(self.picker_items) > visible_count:
+                scroll_str = f"Items {self.picker_scroll_offset + 1}-{min(self.picker_scroll_offset + visible_count, len(self.picker_items))} of {len(self.picker_items)} (Use Scroll Wheel or Up/Down arrows)"
+                scroll_surf = FONT_EDGE.render(scroll_str, True, COLOR_TEXT_MUTED)
+                self.screen.blit(scroll_surf, (px + 30, py + ph - 70))
+
+            # Cancel Button
+            cancel_rect = pygame.Rect(px + pw - 130, py + ph - 45, 100, 32)
+            is_cancel_hovered = cancel_rect.collidepoint(mouse_pos)
+            cancel_col = (239, 68, 68) if not is_cancel_hovered else (248, 113, 113)
+            pygame.draw.rect(self.screen, cancel_col, cancel_rect, border_radius=6)
+            
+            cancel_surf = FONT_UI.render("Cancel", True, COLOR_TEXT_PRIMARY)
+            cancel_text_rect = cancel_surf.get_rect(center=cancel_rect.center)
+            self.screen.blit(cancel_surf, cancel_text_rect)
 
     def run(self):
         while self.running:
