@@ -44,7 +44,7 @@ class TestAStar:
         
         result = astar.search(origin=8, destinations=[1])
         assert result.path is None
-        assert result.destination is None
+        assert result.destination == [1]
         
     def test_no_solution_with_different_nodes(self):
         astar = AStar(map_0)

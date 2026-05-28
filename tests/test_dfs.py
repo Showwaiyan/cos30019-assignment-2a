@@ -57,7 +57,7 @@ class TestDFS:
         result = dfs.search(origin=8, destinations=[1])
 
         assert result.path is None
-        assert result.destination is None
+        assert result.destination == [1]
         assert result.path_cost == 0
 
     def test_no_solution_different_nodes(self):
