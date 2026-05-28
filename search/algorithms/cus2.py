@@ -87,8 +87,8 @@ class CUS2(GraphSearch):
         # If the queue empties without finding a destination
         return SearchResult(
             origin = origin,
-            destination = None,
+            destination = destinations,
             path = None,
-            path_cost = float('inf'),
+            path_cost = 0,
             nodes_created = nodes_created
         )

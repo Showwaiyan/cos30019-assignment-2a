@@ -108,7 +108,7 @@ class GBFS(GraphSearch):
         # No path found
         return SearchResult(
             origin=origin,
-            destination=None,
+            destination=destinations,
             path=None,
             path_cost=0,
             nodes_created=nodes_created
