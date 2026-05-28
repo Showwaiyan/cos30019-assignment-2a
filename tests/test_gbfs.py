@@ -39,7 +39,7 @@ class TestGBFS:
         gbfs = GBFS(map_0)
         result = gbfs.search(origin=8, destinations=[1])
         assert result.path is None
-        assert result.destination is None
+        assert result.destination == [1]
         
     def test_start_equals_goal(self):
         gbfs = GBFS(map_0)

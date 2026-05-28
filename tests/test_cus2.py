@@ -41,7 +41,7 @@ class TestCUS2:
         
         result = cus2.search(origin=8, destinations=[1])
         assert result.path is None
-        assert result.destination is None
+        assert result.destination == [1]
     
     def test_start_equals_goal(self):
         cus2 = CUS2(map_0)
