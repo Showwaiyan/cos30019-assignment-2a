@@ -14,7 +14,7 @@ class SearchResult:
     :param nodes_created: total number of nodes created (expanded + frontier)
     """
     origin: int
-    destination: int | None
+    destination: int | list[int] 
     path: list[int] | None
     path_cost: float
     nodes_created: int
