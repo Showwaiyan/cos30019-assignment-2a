@@ -12,7 +12,7 @@ class Logger:
         :param result: SearchResult dataclass instance
         """
         print(f"> Starting Node: {result.origin}")
-        print(f"> Destination Node: {result.destination if result.destination is not None else 'None'}")
+        print(f"> Destination Node: {result.destination}")
 
         if result.path is None:
             print("> No solution found.")
