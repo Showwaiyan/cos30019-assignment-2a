@@ -1570,10 +1570,10 @@ class VisualizerApp:
             # Place status value next to label
             self.screen.blit(stat_val_surf, (px + 20 + stat_lbl_surf.get_width(), y_offset))
 
-            # Nodes Created (Live and Official)
+            # Nodes Created
             y_offset += line_spacing
             live_created = state.get('nodes_created', 0)
-            node_str = f"Nodes Created: {live_created} (Official: {official_created})"
+            node_str = f"Nodes Created: {live_created}"
             node_surf = FONT_METRICS.render(node_str, True, COLOR_TEXT_PRIMARY)
             self.screen.blit(node_surf, (px + 20, y_offset))
 
