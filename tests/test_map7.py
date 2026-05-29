@@ -3,6 +3,7 @@ from search.algorithms.dfs import DFS
 from search.algorithms.bfs import BFS
 from search.algorithms.astar import AStar
 from search.algorithms.gbfs import GBFS
+from search.algorithms.cus2 import CUS2
 from search.services.parser import load_map
 
 
@@ -93,6 +94,31 @@ class TestMap7:
             if tc["expected_path"]:
                 assert result.destination == tc["expected_path"][-1]
 
+
+    def test_cus2(self):
+        """Test CUS2 (IDA*) with various origin-destination pairs."""
+        test_cases = [
+            {"origin": 1, "destinations": [18], "expected_path": [1, 6, 7, 13, 14, 18], "expected_cost": 28, "expected_nodes": 6},
+            {"origin": 6, "destinations": [12, 18], "expected_path": [6, 7, 13, 12], "expected_cost": 16, "expected_nodes": 4},
+            {"origin": 1, "destinations": [14], "expected_path": [1, 6, 7, 13, 14], "expected_cost": 18, "expected_nodes": 6},
+            {"origin": 7, "destinations": [18], "expected_path": [7, 13, 14, 18], "expected_cost": 23, "expected_nodes": 4},
+            {"origin": 10, "destinations": [1], "expected_path": [10, 9, 8, 7, 6, 1], "expected_cost": 14, "expected_nodes": 6},
+        ]
+
+        cus2 = CUS2(self.graph)
+        for tc in test_cases:
+            result = cus2.search(origin=tc["origin"], destinations=tc["destinations"])
+
+            assert result is not None
+            assert result.origin == tc["origin"]
+            if tc["expected_path"] is None:
+                assert result.path is None
+            else:
+                assert result.path == tc["expected_path"]
+            assert result.path_cost == tc["expected_cost"]
+            assert result.nodes_created == tc["expected_nodes"]
+            if tc["expected_path"]:
+                assert result.destination == tc["expected_path"][-1]
 
     def test_gbfs(self):
         """Test GBFS with various origin-destination pairs."""
