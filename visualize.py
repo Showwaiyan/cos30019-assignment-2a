@@ -47,14 +47,37 @@ def get_font(size, bold=False):
             continue
     return pygame.font.Font(None, size)
 
-FONT_TITLE = get_font(20, bold=True)
-FONT_SECTION = get_font(15, bold=True)
-FONT_UI = get_font(14)
-FONT_PANEL_HEADER = get_font(16, bold=True)
-FONT_NODE = get_font(12, bold=True)
-FONT_EDGE = get_font(10, bold=True)
-FONT_METRICS = get_font(13)
-FONT_METRICS_BOLD = get_font(13, bold=True)
+FONT_TITLE = None
+FONT_SECTION = None
+FONT_UI = None
+FONT_PANEL_HEADER = None
+FONT_NODE = None
+FONT_EDGE = None
+FONT_METRICS = None
+FONT_METRICS_BOLD = None
+
+def update_fonts(scale):
+    global FONT_TITLE, FONT_SECTION, FONT_UI, FONT_PANEL_HEADER, FONT_NODE, FONT_EDGE, FONT_METRICS, FONT_METRICS_BOLD
+    
+    # UI / Sidebar scale is capped or scaled down to prevent overflowing the 320px sidebar
+    ui_scale = 1.0 + (scale - 1.0) * 0.3
+    ui_scale = max(0.9, min(ui_scale, 1.3))
+    
+    # Main panel scale scales more dynamically
+    main_scale = scale
+    
+    FONT_TITLE = get_font(max(16, int(20 * ui_scale)), bold=True)
+    FONT_SECTION = get_font(max(12, int(15 * ui_scale)), bold=True)
+    FONT_UI = get_font(max(11, int(14 * ui_scale)))
+    
+    FONT_PANEL_HEADER = get_font(max(13, int(16 * main_scale)), bold=True)
+    FONT_NODE = get_font(max(9, int(12 * main_scale)), bold=True)
+    FONT_EDGE = get_font(max(8, int(10 * main_scale)), bold=True)
+    FONT_METRICS = get_font(max(10, int(13 * main_scale)))
+    FONT_METRICS_BOLD = get_font(max(10, int(13 * main_scale)), bold=True)
+
+# Run initial load at default scale of 1.0
+update_fonts(1.0)
 
 
 # =====================================================================
@@ -766,12 +789,20 @@ def draw_directed_edge(surface, p1, p2, color, width=1, node_radius=15, arrow_si
     pygame.draw.polygon(surface, color, [tip, wing1, wing2])
 
 
-def get_scaled_pos(node_x, node_y, min_x, max_x, min_y, max_y, panel_rect, padding=35):
+def get_scaled_pos(node_x, node_y, min_x, max_x, min_y, max_y, panel_rect, scale=1.0, padding=35):
     px, py, pw, ph = panel_rect
     
-    # Calculate space available for graph (leave 40px at top for title, 100px at bottom for stats)
-    draw_w = pw - 2 * padding
-    draw_h = ph - 2 * padding - 140
+    # Calculate responsive padding and metrics height
+    scaled_padding = int(padding * scale)
+    line_spacing = max(14, int(20 * scale))
+    box_padding = max(8, int(10 * scale))
+    metrics_box_h = box_padding * 2 + line_spacing * 5
+    
+    # Leave space at top for title (approx 40 * scale) and bottom for metrics box
+    title_height = int(40 * scale)
+    
+    draw_w = pw - 2 * scaled_padding
+    draw_h = ph - 2 * scaled_padding - title_height - metrics_box_h
     
     dx = max_x - min_x
     dy = max_y - min_y
@@ -780,17 +811,17 @@ def get_scaled_pos(node_x, node_y, min_x, max_x, min_y, max_y, panel_rect, paddi
 
     scale_x = draw_w / dx
     scale_y = draw_h / dy
-    scale = min(scale_x, scale_y)
+    scale_factor = min(scale_x, scale_y)
 
     # Center coordinates
-    graph_w = dx * scale
-    graph_h = dy * scale
-    offset_x = px + padding + (draw_w - graph_w) / 2
-    offset_y = py + padding + 40 + (draw_h - graph_h) / 2
+    graph_w = dx * scale_factor
+    graph_h = dy * scale_factor
+    offset_x = px + scaled_padding + (draw_w - graph_w) / 2
+    offset_y = py + scaled_padding + title_height + (draw_h - graph_h) / 2
 
     # Invert Y so larger Y values are higher up
-    x_pos = offset_x + (node_x - min_x) * scale
-    y_pos = offset_y + (max_y - node_y) * scale
+    x_pos = offset_x + (node_x - min_x) * scale_factor
+    y_pos = offset_y + (max_y - node_y) * scale_factor
 
     return int(x_pos), int(y_pos)
 
@@ -841,10 +872,13 @@ def compute_panel_rects(main_rect, k):
 class VisualizerApp:
     def __init__(self):
         # Window configuration
-        self.width = 1400
-        self.height = 950
-        self.screen = pygame.display.set_mode((self.width, self.height))
+        self.width = 1600
+        self.height = 1000
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
         pygame.display.set_caption("Graph Search Visualizer — Side-by-Side Comparison")
+        
+        self.scale = min(self.width / 1400.0, self.height / 950.0)
+        update_fonts(self.scale)
         
         self.clock = pygame.time.Clock()
         self.running = True
@@ -1184,12 +1218,18 @@ class VisualizerApp:
                 self.running = False
                 return
 
+            elif event.type == pygame.VIDEORESIZE:
+                self.width = max(1200, event.w)
+                self.height = max(850, event.h)
+                self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
+                self.scale = min(self.width / 1400.0, self.height / 950.0)
+                update_fonts(self.scale)
+
             if self.show_file_picker:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Left Click
                         # Check cancel button
-                        cancel_rect = pygame.Rect(350 + 700 - 130, 120 + 600 - 45, 100, 32)
-                        if cancel_rect.collidepoint(event.pos):
+                        if hasattr(self, 'picker_cancel_rect') and self.picker_cancel_rect.collidepoint(event.pos):
                             self.show_file_picker = False
                             return
                         
@@ -1289,7 +1329,7 @@ class VisualizerApp:
         self.btn_reset.draw(self.screen)
 
         # Legend panel at bottom of sidebar (2-column layout to save vertical space)
-        legend_y = 655
+        legend_y = max(655, self.height - 250)
         lbl_legend = FONT_SECTION.render("LEGEND", True, COLOR_TEXT_MUTED)
         self.screen.blit(lbl_legend, (20, legend_y))
         
@@ -1330,14 +1370,14 @@ class VisualizerApp:
         # =====================================================================
         # MAIN GRID DRAWING
         # =====================================================================
-        main_rect = (320, 0, 1080, 950)
+        main_rect = (320, 0, self.width - 320, self.height)
         active_algos = [name for name, sel in self.algo_selections.items() if sel]
         k = len(active_algos)
 
         if k == 0:
             # Show empty placeholder message
             msg_surf = FONT_TITLE.render("Please select at least one algorithm to visualize.", True, COLOR_TEXT_MUTED)
-            msg_rect = msg_surf.get_rect(center=(860, 450))
+            msg_rect = msg_surf.get_rect(center=(320 + (self.width - 320) // 2, self.height // 2))
             self.screen.blit(msg_surf, msg_rect)
             return
 
@@ -1378,12 +1418,16 @@ class VisualizerApp:
 
             # Render Graph within this panel
             if self.graph:
+                # Compute responsive node and edge sizes
+                scaled_node_radius = max(8, int(13 * self.scale))
+                scaled_arrow_size = max(5, int(8 * self.scale))
+
                 # First pass: Draw edges
                 for node_id, node in self.graph.items():
-                    p1 = get_scaled_pos(node.x, node.y, self.min_x, self.max_x, self.min_y, self.max_y, rect)
+                    p1 = get_scaled_pos(node.x, node.y, self.min_x, self.max_x, self.min_y, self.max_y, rect, scale=self.scale)
                     
                     for neighbor_id, cost in node.neighbors:
-                        p2 = get_scaled_pos(self.graph[neighbor_id].x, self.graph[neighbor_id].y, self.min_x, self.max_x, self.min_y, self.max_y, rect)
+                        p2 = get_scaled_pos(self.graph[neighbor_id].x, self.graph[neighbor_id].y, self.min_x, self.max_x, self.min_y, self.max_y, rect, scale=self.scale)
                         
                         # Decide edge color and width
                         edge_color = COLOR_EDGE_UNEXPLORED
@@ -1406,7 +1450,8 @@ class VisualizerApp:
                             edge_color = COLOR_EDGE_EXPLORED
                             edge_width = 2
 
-                        draw_directed_edge(self.screen, p1, p2, edge_color, width=edge_width, node_radius=14, arrow_size=8)
+                        scaled_edge_width = max(1, int(edge_width * self.scale))
+                        draw_directed_edge(self.screen, p1, p2, edge_color, width=scaled_edge_width, node_radius=scaled_node_radius + 1, arrow_size=scaled_arrow_size)
                         
                         # Draw Edge Weight Label (offset slightly perpendicular to line)
                         # Placement at 65% distance from start to end (to avoid overlapping bidirectional text)
@@ -1420,18 +1465,18 @@ class VisualizerApp:
                         if dist > 0:
                             nx = -dy / dist
                             ny = dx / dist
-                            lbl_x += nx * 10
-                            lbl_y += ny * 10
+                            lbl_x += nx * 10 * self.scale
+                            lbl_y += ny * 10 * self.scale
                         
                         # Draw small backdrop box for label readability
                         weight_surf = FONT_EDGE.render(str(cost), True, COLOR_TEXT_MUTED)
                         bg_rect = weight_surf.get_rect(center=(lbl_x, lbl_y))
-                        pygame.draw.rect(self.screen, COLOR_BG, bg_rect.inflate(4, 2))
+                        pygame.draw.rect(self.screen, COLOR_BG, bg_rect.inflate(int(4 * self.scale), int(2 * self.scale)))
                         self.screen.blit(weight_surf, bg_rect)
 
                 # Second pass: Draw Nodes
                 for node_id, node in self.graph.items():
-                    pos = get_scaled_pos(node.x, node.y, self.min_x, self.max_x, self.min_y, self.max_y, rect)
+                    pos = get_scaled_pos(node.x, node.y, self.min_x, self.max_x, self.min_y, self.max_y, rect, scale=self.scale)
                     
                     # Decide node color based on status
                     node_color = COLOR_NODE_UNEXPLORED
@@ -1450,10 +1495,10 @@ class VisualizerApp:
 
                     # Glow effect for active/path nodes
                     if node_color in [COLOR_NODE_START, COLOR_NODE_GOAL, COLOR_EDGE_PATH, COLOR_NODE_CURRENT]:
-                        pygame.draw.circle(self.screen, node_color, pos, 16, width=2)
+                        pygame.draw.circle(self.screen, node_color, pos, scaled_node_radius + 3, width=2)
 
-                    pygame.draw.circle(self.screen, node_color, pos, 13)
-                    pygame.draw.circle(self.screen, COLOR_TEXT_PRIMARY, pos, 13, width=1)
+                    pygame.draw.circle(self.screen, node_color, pos, scaled_node_radius)
+                    pygame.draw.circle(self.screen, COLOR_TEXT_PRIMARY, pos, scaled_node_radius, width=1)
                     
                     # Draw node number inside
                     num_surf = FONT_NODE.render(str(node_id), True, COLOR_TEXT_PRIMARY)
@@ -1463,7 +1508,11 @@ class VisualizerApp:
             # =================================================================
             # STATS & METRICS DISPLAY OVERLAY
             # =================================================================
-            metrics_box = pygame.Rect(px + 10, py + ph - 130, pw - 20, 120)
+            # Calculate metrics box height and spacing dynamically
+            line_spacing = max(14, int(20 * self.scale))
+            box_padding = max(8, int(10 * self.scale))
+            metrics_box_h = box_padding * 2 + line_spacing * 5
+            metrics_box = pygame.Rect(px + 10, py + ph - metrics_box_h - 10, pw - 20, metrics_box_h)
             pygame.draw.rect(self.screen, COLOR_BG, metrics_box, border_radius=6)
             pygame.draw.rect(self.screen, COLOR_BORDER, metrics_box, width=1, border_radius=6)
 
@@ -1485,28 +1534,35 @@ class VisualizerApp:
 
             stat_lbl_surf = FONT_METRICS.render("Status: ", True, COLOR_TEXT_MUTED)
             stat_val_surf = FONT_METRICS_BOLD.render(status_text, True, status_color)
-            self.screen.blit(stat_lbl_surf, (px + 20, py + ph - 120))
-            self.screen.blit(stat_val_surf, (px + 70, py + ph - 120))
+            
+            y_offset = metrics_box.top + box_padding
+            self.screen.blit(stat_lbl_surf, (px + 20, y_offset))
+            # Place status value next to label
+            self.screen.blit(stat_val_surf, (px + 20 + stat_lbl_surf.get_width(), y_offset))
 
             # Nodes Created (Live and Official)
+            y_offset += line_spacing
             live_created = state.get('nodes_created', 0)
             node_str = f"Nodes Created: {live_created} (Official: {official_created})"
             node_surf = FONT_METRICS.render(node_str, True, COLOR_TEXT_PRIMARY)
-            self.screen.blit(node_surf, (px + 20, py + ph - 100))
+            self.screen.blit(node_surf, (px + 20, y_offset))
 
             # Path cost
+            y_offset += line_spacing
             cost_str = f"Path Cost: {official_cost if official_path else 'N/A'}"
             if official_cost == float('inf'):
                 cost_str = "Path Cost: N/A (No solution)"
             cost_surf = FONT_METRICS.render(cost_str, True, COLOR_TEXT_PRIMARY)
-            self.screen.blit(cost_surf, (px + 20, py + ph - 80))
+            self.screen.blit(cost_surf, (px + 20, y_offset))
 
             # Execution time
+            y_offset += line_spacing
             time_str = f"CPU Exec Time: {official_time:.4f} ms"
             time_surf = FONT_METRICS.render(time_str, True, COLOR_TEXT_PRIMARY)
-            self.screen.blit(time_surf, (px + 20, py + ph - 60))
+            self.screen.blit(time_surf, (px + 20, y_offset))
 
             # Path list display
+            y_offset += line_spacing
             if status == 'success' and path:
                 path_str = "Path: " + " -> ".join(map(str, path))
             else:
@@ -1523,7 +1579,7 @@ class VisualizerApp:
                 path_str += "..."
                 
             path_surf = FONT_METRICS.render(path_str, True, COLOR_EDGE_PATH if status == 'success' else COLOR_TEXT_MUTED)
-            self.screen.blit(path_surf, (px + 20, py + ph - 40))
+            self.screen.blit(path_surf, (px + 20, y_offset))
 
         # Draw a tiny info footer on the main screen
         # footer_surf = FONT_METRICS.render("Visualizer advances frame-by-frame dynamically. Start node has glowing outer ring.", True, COLOR_TEXT_MUTED)
@@ -1539,38 +1595,46 @@ class VisualizerApp:
             dim_surf.fill((10, 15, 25))
             self.screen.blit(dim_surf, (0, 0))
 
-            # Picker Container
-            px, py, pw, ph = 350, 120, 700, 600
+            # Picker Container (responsive sizing and centering)
+            pw = int(700 * self.scale)
+            ph = int(600 * self.scale)
+            px = (self.width - pw) // 2
+            py = (self.height - ph) // 2
             dialog_rect = pygame.Rect(px, py, pw, ph)
             pygame.draw.rect(self.screen, COLOR_SIDEBAR_BG, dialog_rect, border_radius=12)
             pygame.draw.rect(self.screen, COLOR_BORDER_ACTIVE, dialog_rect, width=2, border_radius=12)
 
             # Title
             title_surf = FONT_TITLE.render("Select Map Text File", True, COLOR_TEXT_PRIMARY)
-            self.screen.blit(title_surf, (px + 30, py + 25))
+            self.screen.blit(title_surf, (px + int(30 * self.scale), py + int(25 * self.scale)))
 
             # Current Path
             path_text = f"Folder: {self.picker_current_dir}"
-            # Truncate path if too long
-            max_path_pixels = 640
+            # Truncate path dynamically if too long
+            max_path_pixels = int(640 * self.scale)
             if FONT_UI.size(path_text)[0] > max_path_pixels:
                 path_text = "..." + self.picker_current_dir[-45:]
+                # Further truncate if needed
+                while FONT_UI.size(path_text)[0] > max_path_pixels and len(path_text) > 10:
+                    path_text = "..." + path_text[4:]
             path_surf = FONT_METRICS.render(path_text, True, COLOR_TEXT_MUTED)
-            self.screen.blit(path_surf, (px + 30, py + 55))
+            self.screen.blit(path_surf, (px + int(30 * self.scale), py + int(55 * self.scale)))
 
             # Horizontal divider line
-            pygame.draw.line(self.screen, COLOR_BORDER, (px + 30, py + 80), (px + pw - 30, py + 80), 1)
+            pygame.draw.line(self.screen, COLOR_BORDER, (px + int(30 * self.scale), py + int(80 * self.scale)), (px + pw - int(30 * self.scale), py + int(80 * self.scale)), 1)
 
             # Draw items list
             self.picker_item_rects.clear()
-            list_y = py + 95
+            list_y = py + int(95 * self.scale)
             visible_count = 12
             visible_items = self.picker_items[self.picker_scroll_offset : self.picker_scroll_offset + visible_count]
             
             mouse_pos = pygame.mouse.get_pos()
+            item_h = int(35 * self.scale)
+            item_margin = int(5 * self.scale)
 
             for idx, (name, path, is_dir) in enumerate(visible_items):
-                item_rect = pygame.Rect(px + 30, list_y + idx * 35, pw - 60, 30)
+                item_rect = pygame.Rect(px + int(30 * self.scale), list_y + idx * item_h, pw - int(60 * self.scale), item_h - item_margin)
                 is_hovered = item_rect.collidepoint(mouse_pos)
                 
                 # Draw hover background
@@ -1592,7 +1656,7 @@ class VisualizerApp:
 
                 item_text = icon + name
                 text_surf = FONT_UI.render(item_text, True, color)
-                self.screen.blit(text_surf, (item_rect.x + 10, item_rect.y + (item_rect.height - text_surf.get_height()) // 2))
+                self.screen.blit(text_surf, (item_rect.x + int(10 * self.scale), item_rect.y + (item_rect.height - text_surf.get_height()) // 2))
                 
                 self.picker_item_rects.append((item_rect, path, is_dir))
 
@@ -1600,10 +1664,13 @@ class VisualizerApp:
             if len(self.picker_items) > visible_count:
                 scroll_str = f"Items {self.picker_scroll_offset + 1}-{min(self.picker_scroll_offset + visible_count, len(self.picker_items))} of {len(self.picker_items)} (Use Scroll Wheel or Up/Down arrows)"
                 scroll_surf = FONT_EDGE.render(scroll_str, True, COLOR_TEXT_MUTED)
-                self.screen.blit(scroll_surf, (px + 30, py + ph - 70))
+                self.screen.blit(scroll_surf, (px + int(30 * self.scale), py + ph - int(70 * self.scale)))
 
             # Cancel Button
-            cancel_rect = pygame.Rect(px + pw - 130, py + ph - 45, 100, 32)
+            cancel_w = int(100 * self.scale)
+            cancel_h = int(32 * self.scale)
+            cancel_rect = pygame.Rect(px + pw - cancel_w - int(30 * self.scale), py + ph - cancel_h - int(13 * self.scale), cancel_w, cancel_h)
+            self.picker_cancel_rect = cancel_rect
             is_cancel_hovered = cancel_rect.collidepoint(mouse_pos)
             cancel_col = (239, 68, 68) if not is_cancel_hovered else (248, 113, 113)
             pygame.draw.rect(self.screen, cancel_col, cancel_rect, border_radius=6)
