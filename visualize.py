@@ -871,10 +871,20 @@ def compute_panel_rects(main_rect, k):
 
 class VisualizerApp:
     def __init__(self):
-        # Window configuration
-        self.width = 1600
-        self.height = 1000
-        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
+        # Window configuration - Fullscreen by default for all platforms
+        info = pygame.display.Info()
+        self.width = info.current_w
+        self.height = info.current_h
+        
+        if self.width <= 0 or self.height <= 0:
+            self.width = 1600
+            self.height = 1000
+            self.fullscreen = False
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
+        else:
+            self.fullscreen = True
+            self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+            
         pygame.display.set_caption("Graph Search Visualizer — Side-by-Side Comparison")
         
         self.scale = min(self.width / 1400.0, self.height / 950.0)
@@ -1219,11 +1229,12 @@ class VisualizerApp:
                 return
 
             elif event.type == pygame.VIDEORESIZE:
-                self.width = max(1200, event.w)
-                self.height = max(850, event.h)
-                self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
-                self.scale = min(self.width / 1400.0, self.height / 950.0)
-                update_fonts(self.scale)
+                if not self.fullscreen:
+                    self.width = max(1200, event.w)
+                    self.height = max(850, event.h)
+                    self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
+                    self.scale = min(self.width / 1400.0, self.height / 950.0)
+                    update_fonts(self.scale)
 
             if self.show_file_picker:
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -1257,6 +1268,25 @@ class VisualizerApp:
                         max_offset = max(0, len(self.picker_items) - 12)
                         self.picker_scroll_offset = min(max_offset, self.picker_scroll_offset + 1)
                 continue
+
+            # Keyboard shortcut handler (Escape to exit, F/F11 to toggle fullscreen)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.running = False
+                    return
+                elif event.key == pygame.K_f or event.key == pygame.K_F11:
+                    self.fullscreen = not self.fullscreen
+                    if self.fullscreen:
+                        info = pygame.display.Info()
+                        self.width = info.current_w
+                        self.height = info.current_h
+                        self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+                    else:
+                        self.width = 1600
+                        self.height = 1000
+                        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
+                    self.scale = min(self.width / 1400.0, self.height / 950.0)
+                    update_fonts(self.scale)
 
             # Feed events to UI controls
             self.btn_browse_map.handle_event(event)
