@@ -426,7 +426,7 @@ def astar_step(graph, origin, destinations):
     }
 
 
-def cus2_step(graph, origin, destinations):
+def cus1_step(graph, origin, destinations):
     if origin not in graph:
         yield {'status': 'failure', 'path': None, 'path_cost': float('inf'), 'nodes_created': 0, 'visited': set(), 'frontier': set(), 'current_node': None, 'came_from': {}}
         return
@@ -514,12 +514,140 @@ def cus2_step(graph, origin, destinations):
     }
 
 
+def cus2_step(graph, origin, destinations):
+    if origin not in graph:
+        yield {
+            'status': 'failure',
+            'path': None,
+            'path_cost': 0,
+            'nodes_created': 0,
+            'visited': set(),
+            'frontier': set(),
+            'current_node': None,
+            'came_from': {}
+        }
+        return
+
+    def get_heuristic(node_id):
+        node = graph[node_id]
+        return min(math.sqrt((node.x - graph[d].x) ** 2 + (node.y - graph[d].y) ** 2) for d in destinations)
+
+    threshold = get_heuristic(origin)
+    nodes_created = 1
+    seen_nodes = {origin}
+    came_from = {origin: None}
+
+    yield {
+        'current_node': None,
+        'visited': set(),
+        'frontier': {origin},
+        'came_from': dict(came_from),
+        'nodes_created': nodes_created,
+        'status': 'searching'
+    }
+
+    # Recursive generator helper
+    def dfs_generator(node_id, g, path, visited):
+        nonlocal nodes_created
+        f = g + get_heuristic(node_id)
+
+        if f > threshold:
+            if f < next_threshold[0]:
+                next_threshold[0] = f
+            return None
+
+        # Yield when starting to explore this node
+        yield {
+            'current_node': node_id,
+            'visited': set(visited),
+            'frontier': set(seen_nodes) - set(visited) - {node_id},
+            'came_from': dict(came_from),
+            'nodes_created': nodes_created,
+            'status': 'searching'
+        }
+
+        if node_id in destinations:
+            yield {
+                'current_node': node_id,
+                'visited': set(visited),
+                'frontier': set(seen_nodes) - set(visited) - {node_id},
+                'came_from': dict(came_from),
+                'nodes_created': nodes_created,
+                'status': 'success',
+                'path': list(path),
+                'path_cost': g
+            }
+            return (list(path), g)
+
+        node = graph[node_id]
+        sorted_neighbors = sorted(
+            node.neighbors, key=lambda x: (g + x[1] + get_heuristic(x[0]), x[0])
+        )
+
+        for neighbor_id, edge_cost in sorted_neighbors:
+            if neighbor_id in visited:
+                continue
+
+            if neighbor_id not in seen_nodes:
+                seen_nodes.add(neighbor_id)
+                nodes_created += 1
+
+            came_from[neighbor_id] = node_id
+            visited.add(neighbor_id)
+            path.append(neighbor_id)
+
+            result = yield from dfs_generator(neighbor_id, g + edge_cost, path, visited)
+            if result is not None:
+                return result
+
+            # Backtrack
+            path.pop()
+            visited.remove(neighbor_id)
+
+            # Yield after backtracking
+            yield {
+                'current_node': node_id,
+                'visited': set(visited),
+                'frontier': set(seen_nodes) - set(visited) - {node_id},
+                'came_from': dict(came_from),
+                'nodes_created': nodes_created,
+                'status': 'searching'
+            }
+
+        return None
+
+    while True:
+        next_threshold = [float("inf")]
+        # Reset came_from pointers to avoid showing stale paths from previous iterations
+        came_from = {origin: None}
+        
+        result = yield from dfs_generator(origin, 0, [origin], {origin})
+        if result is not None:
+            return
+
+        if next_threshold[0] == float("inf"):
+            break
+        threshold = next_threshold[0]
+
+    yield {
+        'current_node': None,
+        'visited': set(seen_nodes),
+        'frontier': set(),
+        'came_from': dict(came_from),
+        'nodes_created': nodes_created,
+        'status': 'failure',
+        'path': None,
+        'path_cost': 0
+    }
+
+
 # Map UI names to generator functions
 GENERATORS = {
     "BFS": bfs_step,
     "DFS": dfs_step,
     "GBFS": gbfs_step,
     "A*": astar_step,
+    "CUS1": cus1_step,
     "CUS2": cus2_step
 }
 
@@ -529,6 +657,7 @@ REGISTRY_KEYS = {
     "DFS": "DFS",
     "GBFS": "GBFS",
     "A*": "AS",
+    "CUS1": "CUS1",
     "CUS2": "CUS2"
 }
 
@@ -930,12 +1059,13 @@ class VisualizerApp:
         self.current_map_path = self.map_paths[self.current_map_idx]
 
         # Algorithm Selection States
-        # Order: BFS, DFS, GBFS, A*, CUS1 (disabled), CUS2
+        # Order: BFS, DFS, GBFS, A*, CUS1, CUS2
         self.algo_selections = {
             "BFS": True,
             "DFS": True,
             "GBFS": True,
             "A*": True,
+            "CUS1": True,
             "CUS2": True
         }
 
@@ -989,14 +1119,11 @@ class VisualizerApp:
         # 2. Algorithm Checkboxes (y: 235 to 450)
         self.checkboxes = []
         y_offset = 265
-        for name in ["BFS", "DFS", "GBFS", "A*", "CUS2"]:
+        for name in ["BFS", "DFS", "GBFS", "A*", "CUS1", "CUS2"]:
             cb = Checkbox(sidebar_x, y_offset, name, checked=self.algo_selections[name], 
                           callback=lambda val, n=name: self.toggle_algo(n, val))
             self.checkboxes.append(cb)
             y_offset += 30
-
-        cb_cus1 = Checkbox(sidebar_x, y_offset, "CUS1 (TBD / Not Implemented)", checked=False, disabled=True)
-        self.checkboxes.append(cb_cus1)
 
         # 3. Speed Slider & Controls (y: 460 to 640)
         self.speed_slider = Slider(sidebar_x, 515, 280, 1, 60, self.sim_speed, "Speed (Steps/sec)", callback=self.set_speed)
@@ -1434,8 +1561,10 @@ class VisualizerApp:
 
             # Panel Title
             title_text = f"{name}"
-            if name == "CUS2":
+            if name == "CUS1":
                 title_text += " (Dijkstra)"
+            elif name == "CUS2":
+                title_text += " (IDA*)"
             title_surf = FONT_PANEL_HEADER.render(title_text, True, COLOR_TEXT_PRIMARY)
             self.screen.blit(title_surf, (px + 15, py + 12))
 
