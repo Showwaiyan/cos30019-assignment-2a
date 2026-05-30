@@ -667,7 +667,7 @@ REGISTRY_KEYS = {
 # =====================================================================
 
 class Button:
-    def __init__(self, x, y, w, h, text, bg_color, hover_color, text_color=COLOR_TEXT_PRIMARY, callback=None):
+    def __init__(self, x, y, w, h, text, bg_color, hover_color, text_color=COLOR_TEXT_PRIMARY, callback=None, disabled=False):
         self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.bg_color = bg_color
@@ -675,8 +675,11 @@ class Button:
         self.text_color = text_color
         self.callback = callback
         self.is_hovered = False
+        self.disabled = disabled
 
     def handle_event(self, event):
+        if self.disabled:
+            return
         if event.type == pygame.MOUSEMOTION:
             self.is_hovered = self.rect.collidepoint(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -685,11 +688,17 @@ class Button:
                     self.callback()
 
     def draw(self, surface):
-        color = self.hover_color if self.is_hovered else self.bg_color
+        if self.disabled:
+            color = COLOR_PANEL_BG
+            text_color = COLOR_TEXT_MUTED
+        else:
+            color = self.hover_color if self.is_hovered else self.bg_color
+            text_color = self.text_color
+            
         pygame.draw.rect(surface, color, self.rect, border_radius=6)
         pygame.draw.rect(surface, COLOR_BORDER, self.rect, width=1, border_radius=6)
         
-        txt_surf = FONT_UI.render(self.text, True, self.text_color)
+        txt_surf = FONT_UI.render(self.text, True, text_color)
         txt_rect = txt_surf.get_rect(center=self.rect.center)
         surface.blit(txt_surf, txt_rect)
 
@@ -955,6 +964,51 @@ def get_scaled_pos(node_x, node_y, min_x, max_x, min_y, max_y, panel_rect, scale
     return int(x_pos), int(y_pos)
 
 
+def get_path_cost(node_id, came_from, graph, origin):
+    if node_id == origin:
+        return 0
+    cost = 0
+    curr = node_id
+    visited = set()
+    while curr != origin and curr in came_from:
+        if curr in visited:
+            break
+        visited.add(curr)
+        parent = came_from[curr]
+        if parent is None:
+            break
+        edge_cost = None
+        if parent in graph:
+            for neighbor_id, weight in graph[parent].neighbors:
+                if neighbor_id == curr:
+                    edge_cost = weight
+                    break
+        if edge_cost is None:
+            break
+        cost += edge_cost
+        curr = parent
+    return cost
+
+
+def copy_state(state):
+    if not state:
+        return {}
+    return {
+        'current_node': state.get('current_node'),
+        'visited': set(state.get('visited', set())),
+        'frontier': set(state.get('frontier', set())),
+        'came_from': dict(state.get('came_from', {})),
+        'nodes_created': state.get('nodes_created', 0),
+        'status': state.get('status', 'searching'),
+        'path': list(state.get('path')) if state.get('path') is not None else None,
+        'path_cost': state.get('path_cost', 0)
+    }
+
+
+def copy_sim_states(sim_states):
+    return {name: copy_state(state) for name, state in sim_states.items()}
+
+
 def compute_panel_rects(main_rect, k):
     mx, my, mw, mh = main_rect
     rects = []
@@ -1073,6 +1127,9 @@ class VisualizerApp:
         self.sim_running = False
         self.sim_speed = 5  # steps per second
         self.last_step_time = 0
+        self.show_heuristics = True
+        self.history = []
+        self.history_idx = 0
         
         # Raw parsed map data
         self.origin = None
@@ -1127,9 +1184,11 @@ class VisualizerApp:
 
         # 3. Speed Slider & Controls (y: 460 to 640)
         self.speed_slider = Slider(sidebar_x, 515, 280, 1, 60, self.sim_speed, "Speed (Steps/sec)", callback=self.set_speed)
-        self.btn_play_pause = Button(sidebar_x, 545, 135, 35, "Play", (16, 185, 129), (52, 211, 153), callback=self.toggle_play)
-        self.btn_step = Button(sidebar_x + 145, 545, 135, 35, "Step", COLOR_PANEL_BG, (30, 41, 59), callback=self.step_once)
+        self.btn_back = Button(sidebar_x, 545, 85, 35, "Back", COLOR_PANEL_BG, (30, 41, 59), callback=self.step_back)
+        self.btn_play_pause = Button(sidebar_x + 95, 545, 90, 35, "Play", (16, 185, 129), (52, 211, 153), callback=self.toggle_play)
+        self.btn_step = Button(sidebar_x + 195, 545, 85, 35, "Next", COLOR_PANEL_BG, (30, 41, 59), callback=self.step_once)
         self.btn_reset = Button(sidebar_x, 590, 280, 35, "Reset Simulation", (239, 68, 68), (248, 113, 113), callback=self.reset_simulation)
+        self.cb_show_heuristics = Checkbox(sidebar_x, 635, "Show Heuristics on Nodes", checked=self.show_heuristics, callback=self.toggle_heuristics)
 
     def set_ui_error(self, msg):
         self.ui_error_message = msg
@@ -1250,6 +1309,16 @@ class VisualizerApp:
     def set_speed(self, val):
         self.sim_speed = val
 
+    def toggle_heuristics(self, val):
+        self.show_heuristics = val
+
+    def step_back(self):
+        if self.history_idx > 0:
+            self.history_idx -= 1
+            self.sim_states = copy_sim_states(self.history[self.history_idx])
+            if self.sim_running:
+                self.toggle_play()
+
     def toggle_play(self):
         if self.sim_running:
             self.sim_running = False
@@ -1280,6 +1349,8 @@ class VisualizerApp:
         self.simulators.clear()
         self.sim_states.clear()
         self.real_metrics.clear()
+        self.history = []
+        self.history_idx = 0
 
         # Identify active algorithms
         active_algos = [name for name, sel in self.algo_selections.items() if sel]
@@ -1313,31 +1384,53 @@ class VisualizerApp:
                 }
 
         # 2. Instantiate step generators
+        initial_states = {}
         for name in active_algos:
             gen_func = GENERATORS[name]
             self.simulators[name] = gen_func(self.graph, self.origin, self.destinations)
             
             # Get the initial setup state from generator
             try:
-                self.sim_states[name] = next(self.simulators[name])
+                state = next(self.simulators[name])
+                self.sim_states[name] = state
+                initial_states[name] = state
             except StopIteration:
                 pass
+        self.history.append(copy_sim_states(initial_states))
 
     def step_once(self):
+        # If we are not at the end of history, step forward in history
+        if self.history_idx < len(self.history) - 1:
+            self.history_idx += 1
+            self.sim_states = copy_sim_states(self.history[self.history_idx])
+            return
+
         # Advance each simulator by one step
+        next_states = {}
         any_advancements = False
-        for name, simulator in list(self.simulators.items()):
+        for name in list(self.simulators.keys()):
+            simulator = self.simulators[name]
             current_state = self.sim_states.get(name)
-            if current_state and current_state['status'] == 'searching':
-                try:
-                    self.sim_states[name] = next(simulator)
-                    any_advancements = True
-                except StopIteration:
-                    pass
+            
+            if current_state and current_state['status'] != 'searching':
+                next_states[name] = current_state
+                continue
+                
+            try:
+                state = next(simulator)
+                next_states[name] = state
+                any_advancements = True
+            except StopIteration:
+                next_states[name] = current_state
         
-        # If we cannot advance further, pause play
-        if not any_advancements and self.sim_running:
-            self.toggle_play()
+        if any_advancements:
+            self.history.append(copy_sim_states(next_states))
+            self.history_idx += 1
+            self.sim_states = next_states
+        else:
+            # If no generator could advance, pause play
+            if self.sim_running:
+                self.toggle_play()
 
     def tick(self):
         if not self.sim_running:
@@ -1422,9 +1515,11 @@ class VisualizerApp:
             for cb in self.checkboxes:
                 cb.handle_event(event)
             self.speed_slider.handle_event(event)
+            self.btn_back.handle_event(event)
             self.btn_play_pause.handle_event(event)
             self.btn_step.handle_event(event)
             self.btn_reset.handle_event(event)
+            self.cb_show_heuristics.handle_event(event)
 
     def draw(self):
         # 1. Clear Screen
@@ -1481,12 +1576,15 @@ class VisualizerApp:
         
         # Speed Slider & Controls
         self.speed_slider.draw(self.screen)
+        self.btn_back.disabled = (self.history_idx == 0)
+        self.btn_back.draw(self.screen)
         self.btn_play_pause.draw(self.screen)
         self.btn_step.draw(self.screen)
         self.btn_reset.draw(self.screen)
+        self.cb_show_heuristics.draw(self.screen)
 
         # Legend panel at bottom of sidebar (2-column layout to save vertical space)
-        legend_y = max(655, self.height - 250)
+        legend_y = max(670, self.height - 250)
         lbl_legend = FONT_SECTION.render("LEGEND", True, COLOR_TEXT_MUTED)
         self.screen.blit(lbl_legend, (20, legend_y))
         
@@ -1663,6 +1761,59 @@ class VisualizerApp:
                     num_surf = FONT_NODE.render(str(node_id), True, COLOR_TEXT_PRIMARY)
                     num_rect = num_surf.get_rect(center=pos)
                     self.screen.blit(num_surf, num_rect)
+
+                    # Draw heuristic value above the node
+                    if self.show_heuristics and self.destinations:
+                        h_val = min(math.sqrt((node.x - self.graph[d].x) ** 2 + (node.y - self.graph[d].y) ** 2) for d in self.destinations)
+                        
+                        # Check if node has been reached/explored to calculate g(n)
+                        is_reached = (node_id == self.origin) or (node_id in visited_set) or (node_id in frontier_set) or (node_id == current_node_id)
+                        
+                        if is_reached:
+                            g_val = get_path_cost(node_id, came_from, self.graph, self.origin)
+                            sum_val = g_val + h_val
+                            
+                            g_str = f"g={int(g_val)}" if g_val.is_integer() else f"g={g_val:.1f}"
+                            g_surf = FONT_EDGE.render(g_str, True, COLOR_TEXT_MUTED)
+                            
+                            h_str = f"h={int(h_val)}" if h_val.is_integer() else f"h={h_val:.1f}"
+                            h_surf = FONT_EDGE.render(h_str, True, COLOR_TEXT_MUTED)
+                            
+                            gh_str = f"g+h={int(sum_val)}" if sum_val.is_integer() else f"g+h={sum_val:.1f}"
+                            gh_surf = FONT_EDGE.render(gh_str, True, (74, 222, 128))  # obvious neon green color
+                            
+                            w1, h1 = g_surf.get_size()
+                            w2, h2 = h_surf.get_size()
+                            w3, h3 = gh_surf.get_size()
+                            
+                            box_w = max(w1, w2, w3) + int(8 * self.scale)
+                            box_h = h1 + h2 + h3 + int(8 * self.scale)
+                            
+                            box_x = pos[0] - box_w // 2
+                            box_y = pos[1] - scaled_node_radius - box_h - int(4 * self.scale)
+                            box_rect = pygame.Rect(box_x, box_y, box_w, box_h)
+                            
+                            pygame.draw.rect(self.screen, COLOR_PANEL_BG, box_rect, border_radius=6)
+                            pygame.draw.rect(self.screen, COLOR_BORDER, box_rect, width=1, border_radius=6)
+                            
+                            y_offset = box_y + int(3 * self.scale)
+                            g_rect = g_surf.get_rect(center=(pos[0], y_offset + h1 // 2))
+                            y_offset += h1 + int(1 * self.scale)
+                            h_rect = h_surf.get_rect(center=(pos[0], y_offset + h2 // 2))
+                            y_offset += h2 + int(1 * self.scale)
+                            gh_rect = gh_surf.get_rect(center=(pos[0], y_offset + h3 // 2))
+                            
+                            self.screen.blit(g_surf, g_rect)
+                            self.screen.blit(h_surf, h_rect)
+                            self.screen.blit(gh_surf, gh_rect)
+                        else:
+                            h_str = f"h={int(h_val)}" if h_val.is_integer() else f"h={h_val:.1f}"
+                            h_surf = FONT_EDGE.render(h_str, True, COLOR_TEXT_MUTED)
+                            h_rect = h_surf.get_rect(center=(pos[0], pos[1] - scaled_node_radius - 10))
+                            
+                            pygame.draw.rect(self.screen, COLOR_PANEL_BG, h_rect.inflate(int(4 * self.scale), int(2 * self.scale)), border_radius=4)
+                            pygame.draw.rect(self.screen, COLOR_BORDER, h_rect.inflate(int(4 * self.scale), int(2 * self.scale)), width=1, border_radius=4)
+                            self.screen.blit(h_surf, h_rect)
 
             # =================================================================
             # STATS & METRICS DISPLAY OVERLAY
