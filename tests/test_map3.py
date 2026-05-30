@@ -4,6 +4,7 @@ from search.algorithms.bfs import BFS
 from search.algorithms.astar import AStar
 from search.algorithms.gbfs import GBFS
 from search.algorithms.cus2 import CUS2
+from search.algorithms.cus1 import CUS1
 from search.services.parser import load_map
 
 
@@ -127,6 +128,32 @@ class TestMap3:
         gbfs = GBFS(self.graph)
         for tc in test_cases:
             result = gbfs.search(origin=tc["origin"], destinations=tc["destinations"])
+
+            assert result is not None
+            assert result.origin == tc["origin"]
+            if tc["expected_path"] is None:
+                assert result.path is None
+            else:
+                assert result.path == tc["expected_path"]
+            assert result.path_cost == tc["expected_cost"]
+            assert result.nodes_created == tc["expected_nodes"]
+            if tc["expected_path"]:
+                assert result.destination == tc["expected_path"][-1]
+
+    def test_dijkstra(self):
+        """Test Dijkstra with various origin-destination pairs."""
+        test_cases = [
+            {"origin": 2, "destinations": [7], "expected_path": None, "expected_cost": 0, "expected_nodes": 8},
+            {"origin": 2, "destinations": [6], "expected_path": [2, 4, 6], "expected_cost": 13, "expected_nodes": 8},
+            {"origin": 1, "destinations": [7], "expected_path": None, "expected_cost": 0, "expected_nodes": 8},
+            {"origin": 3, "destinations": [6], "expected_path": [3, 5, 4, 6], "expected_cost": 17, "expected_nodes": 7},
+            {"origin": 5, "destinations": [1], "expected_path": [5, 3, 1], "expected_cost": 14, "expected_nodes": 7},
+            {"origin": 1, "destinations": [1], "expected_path": [1], "expected_cost": 0, "expected_nodes": 1},
+        ]
+
+        dijkstra = CUS1(self.graph)
+        for tc in test_cases:
+            result = dijkstra.search(origin=tc["origin"], destinations=tc["destinations"])
 
             assert result is not None
             assert result.origin == tc["origin"]
