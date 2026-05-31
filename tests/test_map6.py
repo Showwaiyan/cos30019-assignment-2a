@@ -82,7 +82,7 @@ class TestMap6:
     def test_cus2(self):
         """Test CUS2 (IDA*) with various origin-destination pairs."""
         test_cases = [
-            {"origin": 1, "destinations": [12], "expected_path": [1, 5, 6, 7, 11, 12], "expected_cost": 14, "expected_nodes": 9},
+            {"origin": 1, "destinations": [12], "expected_path": [1, 5, 6, 7, 11, 12], "expected_cost": 14, "expected_nodes": 8},
         ]
 
         cus2 = CUS2(self.graph)

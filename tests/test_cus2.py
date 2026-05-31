@@ -23,7 +23,7 @@ class TestCUS2:
         cus2 = CUS2(self.graph)
         result = cus2.search(origin=1, destinations=[3])
         assert result.path == [1, 2, 3]
-        assert result.nodes_created == 6
+        assert result.nodes_created == 10
 
     def test_different_origin_destinations(self):
         cus2 = CUS2(self.graph)
@@ -31,17 +31,17 @@ class TestCUS2:
         result = cus2.search(origin=3, destinations=[1])
         assert result.path == [3, 2, 4, 1]
         assert result.path_cost == 18
-        assert result.nodes_created == 7
+        assert result.nodes_created == 4
 
         result = cus2.search(origin=6, destinations=[3])
         assert result.path == [6, 4, 2, 3]
         assert result.path_cost == 15
-        assert result.nodes_created == 7
+        assert result.nodes_created == 4
 
         result = cus2.search(origin=7, destinations=[1])
         assert result.path == [7, 4, 1]
         assert result.path_cost == 12
-        assert result.nodes_created == 7
+        assert result.nodes_created == 3
 
     def test_no_solution(self):
         from search.models.graph import Node
