@@ -33,8 +33,6 @@ class CUS2(GraphSearch):
             )
 
         threshold = h(origin)
-        nodes_created = 1
-        seen_nodes = {origin}
         next_threshold = [float("inf")]
 
         def dfs(node_id: int, g: float, path: list[int], visited: set[int]):
@@ -57,9 +55,7 @@ class CUS2(GraphSearch):
                 if neighbor_id in visited:
                     continue
 
-                if neighbor_id not in seen_nodes:
-                    seen_nodes.add(neighbor_id)
-                    nodes_created += 1
+                nodes_created += 1
                 visited.add(neighbor_id)
                 path.append(neighbor_id)
 
@@ -73,6 +69,7 @@ class CUS2(GraphSearch):
             return None
 
         while True:
+            nodes_created = 1
             result = dfs(origin, 0, [origin], {origin})
             if result is not None:
                 path, cost = result
