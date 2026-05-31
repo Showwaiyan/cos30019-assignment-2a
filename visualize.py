@@ -1773,13 +1773,13 @@ class VisualizerApp:
                             g_val = get_path_cost(node_id, came_from, self.graph, self.origin)
                             sum_val = g_val + h_val
                             
-                            g_str = f"g={int(g_val)}" if g_val.is_integer() else f"g={g_val:.1f}"
+                            g_str = f"g={int(g_val)}" if float(g_val).is_integer() else f"g={g_val:.1f}"
                             g_surf = FONT_EDGE.render(g_str, True, COLOR_TEXT_MUTED)
                             
                             h_str = f"h={int(h_val)}" if h_val.is_integer() else f"h={h_val:.1f}"
                             h_surf = FONT_EDGE.render(h_str, True, COLOR_TEXT_MUTED)
                             
-                            gh_str = f"g+h={int(sum_val)}" if sum_val.is_integer() else f"g+h={sum_val:.1f}"
+                            gh_str = f"g+h={int(sum_val)}" if float(sum_val).is_integer() else f"g+h={sum_val:.1f}"
                             gh_surf = FONT_EDGE.render(gh_str, True, (74, 222, 128))  # obvious neon green color
                             
                             w1, h1 = g_surf.get_size()
