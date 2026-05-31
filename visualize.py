@@ -1054,19 +1054,11 @@ def compute_panel_rects(main_rect, k):
 
 class VisualizerApp:
     def __init__(self):
-        # Window configuration - Fullscreen by default for all platforms
-        info = pygame.display.Info()
-        self.width = info.current_w
-        self.height = info.current_h
-        
-        if self.width <= 0 or self.height <= 0:
-            self.width = 1600
-            self.height = 1000
-            self.fullscreen = False
-            self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
-        else:
-            self.fullscreen = True
-            self.screen = pygame.display.set_mode((self.width, self.height), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+        # Window configuration - Windowed by default; toggle fullscreen with F/F11
+        self.width = 1600
+        self.height = 1000
+        self.fullscreen = False
+        self.screen = pygame.display.set_mode((self.width, self.height), pygame.RESIZABLE | pygame.DOUBLEBUF)
             
         pygame.display.set_caption("Graph Search Visualizer — Side-by-Side Comparison")
         
