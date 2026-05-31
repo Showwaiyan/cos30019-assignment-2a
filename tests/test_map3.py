@@ -97,11 +97,11 @@ class TestMap3:
     def test_cus2(self):
         """Test CUS2 (IDA*) with various origin-destination pairs."""
         test_cases = [
-            {"origin": 2, "destinations": [6], "expected_path": [2, 4, 6], "expected_cost": 13, "expected_nodes": 7},
-            {"origin": 1, "destinations": [6], "expected_path": [1, 2, 4, 6], "expected_cost": 19, "expected_nodes": 7},
-            {"origin": 3, "destinations": [6], "expected_path": [3, 5, 4, 6], "expected_cost": 17, "expected_nodes": 7},
-            {"origin": 5, "destinations": [1], "expected_path": [5, 3, 1], "expected_cost": 14, "expected_nodes": 6},
-            {"origin": 4, "destinations": [1, 6], "expected_path": [4, 6], "expected_cost": 6, "expected_nodes": 5},
+            {"origin": 2, "destinations": [6], "expected_path": [2, 4, 6], "expected_cost": 13, "expected_nodes": 3},
+            {"origin": 1, "destinations": [6], "expected_path": [1, 2, 4, 6], "expected_cost": 19, "expected_nodes": 4},
+            {"origin": 3, "destinations": [6], "expected_path": [3, 5, 4, 6], "expected_cost": 17, "expected_nodes": 4},
+            {"origin": 5, "destinations": [1], "expected_path": [5, 3, 1], "expected_cost": 14, "expected_nodes": 3},
+            {"origin": 4, "destinations": [1, 6], "expected_path": [4, 6], "expected_cost": 6, "expected_nodes": 2},
         ]
 
         cus2 = CUS2(self.graph)

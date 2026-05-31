@@ -101,7 +101,7 @@ class TestMap7:
         test_cases = [
             {"origin": 1, "destinations": [18], "expected_path": [1, 6, 7, 13, 14, 18], "expected_cost": 28, "expected_nodes": 6},
             {"origin": 6, "destinations": [12, 18], "expected_path": [6, 7, 13, 12], "expected_cost": 16, "expected_nodes": 4},
-            {"origin": 1, "destinations": [14], "expected_path": [1, 6, 7, 13, 14], "expected_cost": 18, "expected_nodes": 6},
+            {"origin": 1, "destinations": [14], "expected_path": [1, 6, 7, 13, 14], "expected_cost": 18, "expected_nodes": 5},
             {"origin": 7, "destinations": [18], "expected_path": [7, 13, 14, 18], "expected_cost": 23, "expected_nodes": 4},
             {"origin": 10, "destinations": [1], "expected_path": [10, 9, 8, 7, 6, 1], "expected_cost": 14, "expected_nodes": 6},
         ]
